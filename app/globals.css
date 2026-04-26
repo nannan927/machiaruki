@@ -1,0 +1,61 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  background: #f7f8fa;
+  color: #1f2937;
+}
+
+.container {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 24px 16px 48px;
+}
+
+.card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 16px;
+  margin-top: 16px;
+}
+
+.form {
+  display: grid;
+  gap: 10px;
+}
+
+input,
+textarea,
+button {
+  width: 100%;
+  padding: 8px;
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+.error {
+  color: #b91c1c;
+}
+
+.memoList {
+  margin: 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 10px;
+}
+
+.mapPlaceholder {
+  border: 1px dashed #9ca3af;
+  border-radius: 8px;
+  padding: 12px;
+  display: grid;
+  gap: 8px;
+  background: #f9fafb;
+}
