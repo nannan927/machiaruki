@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+import { getSupabaseClient } from "@/lib/supabase";
 import type { CreateMemoInput } from "@/types/memo";
 
 function validateMemo(input: Partial<CreateMemoInput>) {
@@ -16,6 +16,11 @@ function validateMemo(input: Partial<CreateMemoInput>) {
 }
 
 export async function GET() {
+  const { client: supabase, error: configError } = getSupabaseClient();
+  if (!supabase) {
+    return NextResponse.json({ error: configError }, { status: 503 });
+  }
+
   const { data, error } = await supabase
     .from("memos")
     .select("*")
@@ -29,6 +34,11 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const { client: supabase, error: configError } = getSupabaseClient();
+  if (!supabase) {
+    return NextResponse.json({ error: configError }, { status: 503 });
+  }
+
   const payload = (await request.json()) as Partial<CreateMemoInput>;
   const validationError = validateMemo(payload);
 
