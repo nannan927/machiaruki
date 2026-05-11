@@ -53,8 +53,18 @@ export default function Home() {
 
   return (
     <main className="container">
-      <h1>Machinote MVP1</h1>
-      <p>街の上に、自分の言葉を置くための最小実装です。</p>
+      <section className="hero card">
+        <p className="eyebrow">Machinote MVP1</p>
+        <h1>その場所で感じたことを、3ステップで記録。</h1>
+        <p>
+          まず地図で場所を選び、次に短くメモして保存。歩いた軌跡があなたの街のノートになります。
+        </p>
+        <ol className="steps">
+          <li>地図で「ここだ」と思う地点を選ぶ</li>
+          <li>感じたことをひとこと書く</li>
+          <li>この場所に保存して一覧で振り返る</li>
+        </ol>
+      </section>
       {error ? <p className="error">{error}</p> : null}
 
       <MapView selected={selected} memos={memos} onSelect={setSelected} />

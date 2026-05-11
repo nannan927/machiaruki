@@ -59,6 +59,7 @@ export function MemoForm({ selected, onSaved }: MemoFormProps) {
   return (
     <section className="card">
       <h2>メモ作成</h2>
+      <p className="hint">場所を選んだ直後に、30秒で記録するのがおすすめです。</p>
       <form onSubmit={handleSubmit} className="form">
         <label>
           タイトル
@@ -72,8 +73,8 @@ export function MemoForm({ selected, onSaved }: MemoFormProps) {
           タグ（カンマ区切り）
           <input value={tags} onChange={(e) => setTags(e.target.value)} />
         </label>
-        <p>lat: {selected?.lat ?? "未選択"}</p>
-        <p>lng: {selected?.lng ?? "未選択"}</p>
+        <p className="coord">lat: {selected?.lat ?? "未選択"}</p>
+        <p className="coord">lng: {selected?.lng ?? "未選択"}</p>
         {error ? <p className="error">{error}</p> : null}
         <button type="submit" disabled={isSaving}>
           {isSaving ? "保存中..." : "この場所に保存"}
