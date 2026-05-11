@@ -6,28 +6,50 @@ import { MemoForm } from "@/components/MemoForm";
 import { MemoList } from "@/components/MemoList";
 import type { Memo } from "@/types/memo";
 
+async function loadMemos() {
+  const response = await fetch("/api/memos");
+  if (!response.ok) {
+    throw new Error("Failed to fetch memos");
+  }
+
+  return (await response.json()) as Memo[];
+}
+
 export default function Home() {
   const [memos, setMemos] = useState<Memo[]>([]);
   const [selected, setSelected] = useState<{ lat: number; lng: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const fetchMemos = useCallback(async () => {
-    const response = await fetch("/api/memos");
-    if (!response.ok) {
+    try {
+      const data = await loadMemos();
+      setMemos(data);
+      setError(null);
+    } catch {
       setError("メモの取得に失敗しました。Supabase設定を確認してください。");
-      return;
     }
-
-    const data = (await response.json()) as Memo[];
-    setMemos(data);
-    setError(null);
   }, []);
 
   useEffect(() => {
-    fetchMemos().catch(() => {
-      setError("メモの取得に失敗しました。Supabase設定を確認してください。");
-    });
-  }, [fetchMemos]);
+    let ignore = false;
+
+    loadMemos()
+      .then((data) => {
+        if (!ignore) {
+          setMemos(data);
+          setError(null);
+        }
+      })
+      .catch(() => {
+        if (!ignore) {
+          setError("メモの取得に失敗しました。Supabase設定を確認してください。");
+        }
+      });
+
+    return () => {
+      ignore = true;
+    };
+  }, []);
 
   return (
     <main className="container">
