@@ -11,12 +11,21 @@ export function MemoList({ memos }: MemoListProps) {
       ) : (
         <ul className="memoList">
           {memos.map((memo) => (
-            <li key={memo.id}>
+            <li key={memo.id} className="memoItem">
               <strong>{memo.title || "（無題）"}</strong>
               <p>{memo.body}</p>
               <small>
-                {memo.lat.toFixed(5)}, {memo.lng.toFixed(5)} / {memo.tags.join(" / ")}
+                {memo.lat.toFixed(5)}, {memo.lng.toFixed(5)}
               </small>
+              {memo.tags.length > 0 ? (
+                <div className="tagGroup">
+                  {memo.tags.map((tag) => (
+                    <span className="tag" key={`${memo.id}-${tag}`}>
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              ) : null}
             </li>
           ))}
         </ul>
