@@ -103,15 +103,21 @@ export function MemoForm({ selected, onSaved }: MemoFormProps) {
           />
         </label>
 
-        <p>lat: {selected?.lat ?? "未選択"}</p>
-        <p>lng: {selected?.lng ?? "未選択"}</p>
+        <p className="mapStatus">
+          lat: <span className="coord">{selected?.lat ?? "未選択"}</span>
+        </p>
+        <p className="mapStatus">
+          lng: <span className="coord">{selected?.lng ?? "未選択"}</span>
+        </p>
         {!selected ? <p className="hint">地図をクリックして投稿先の場所を選択してください。</p> : null}
         {error ? <p className="error">{error}</p> : null}
         {success ? <p className="success">{success}</p> : null}
 
-        <button type="submit" disabled={isSaving || !selected}>
-          {isSaving ? "保存中..." : "この場所に保存"}
-        </button>
+        <div className="mapActions">
+          <button type="submit" disabled={isSaving || !selected}>
+            {isSaving ? "保存中..." : "この場所に保存"}
+          </button>
+        </div>
       </form>
     </section>
   );
