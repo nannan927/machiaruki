@@ -4,8 +4,10 @@ type MemoListProps = { memos: Memo[] };
 
 export function MemoList({ memos }: MemoListProps) {
   return (
-    <section className="card">
-      <h2>保存済みメモ一覧</h2>
+    <section className="card toneList">
+      <div className="cardHeader">
+        <h2>3. 散歩ノート</h2>
+      </div>
       {memos.length === 0 ? (
         <p>まだメモがありません。</p>
       ) : (

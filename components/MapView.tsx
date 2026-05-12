@@ -1,6 +1,7 @@
 "use client";
 
 import type { Memo } from "@/types/memo";
+import { MapCanvas } from "@/components/MapCanvas";
 
 type MapViewProps = {
   selected: { lat: number; lng: number } | null;
@@ -15,27 +16,15 @@ export function MapView({ selected, memos, onSelect }: MapViewProps) {
 
   return (
     <section className="card">
-      <h2>地図（MVPプレースホルダー）</h2>
-      <p>
-        Google Maps APIキー設定後に実マップへ置き換えます。今は座標入力でメモ作成フローを確認できます。
-      </p>
-      <div className="mapPlaceholder">
-        <p>
-          center: {center.lat.toFixed(4)}, {center.lng.toFixed(4)}
-        </p>
-        <button
-          type="button"
-          onClick={() =>
-            onSelect({
-              lat: +(center.lat + 0.0005).toFixed(6),
-              lng: +(center.lng + 0.0005).toFixed(6),
-            })
-          }
-        >
-          + 座標を選択
-        </button>
+      <div className="cardHeader">
+        <h2>1. ホーム / 地図</h2>
+        <small>保存済み {memos.length} 件</small>
       </div>
-      <p>保存済みメモ: {memos.length} 件</p>
+      <p className="cardLead">Google Maps導入前の仮マップ。導入時は MapCanvas のみ差し替えます。</p>
+      <MapCanvas center={center} onSelect={onSelect} />
+      <p className="coords">
+        center: {center.lat.toFixed(4)}, {center.lng.toFixed(4)}
+      </p>
     </section>
   );
 }

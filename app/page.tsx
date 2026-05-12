@@ -52,14 +52,20 @@ export default function Home() {
   }, []);
 
   return (
-    <main className="container">
-      <h1>Machinote MVP1</h1>
-      <p>街の上に、自分の言葉を置くための最小実装です。</p>
-      {error ? <p className="error">{error}</p> : null}
+    <main className="container appRoot">
+      <header className="hero">
+        <p className="eyebrow">街と一緒に考えるアプリ</p>
+        <h1>地図の余白</h1>
+        <p className="lead">街の余白に、わたしの視点を残す。</p>
+      </header>
 
-      <MapView selected={selected} memos={memos} onSelect={setSelected} />
-      <MemoForm selected={selected} onSaved={fetchMemos} />
-      <MemoList memos={memos} />
+      {error ? <p className="error card">{error}</p> : null}
+
+      <section className="phoneGrid">
+        <MapView selected={selected} memos={memos} onSelect={setSelected} />
+        <MemoForm selected={selected} onSaved={fetchMemos} />
+        <MemoList memos={memos} />
+      </section>
     </main>
   );
 }

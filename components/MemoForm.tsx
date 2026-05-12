@@ -20,7 +20,7 @@ export function MemoForm({ selected, onSaved }: MemoFormProps) {
     event.preventDefault();
 
     if (!selected) {
-      setError("先に地図で場所を選択してください。");
+      setError("先に『この場所を選ぶ』を押してください。");
       setSuccess(null);
       return;
     }
@@ -73,51 +73,35 @@ export function MemoForm({ selected, onSaved }: MemoFormProps) {
   }
 
   return (
-    <section className="card">
-      <h2>場所の記録を投稿</h2>
+    <section className="card toneWrite">
+      <div className="cardHeader">
+        <h2>2. 場所の記録</h2>
+      </div>
       <form onSubmit={handleSubmit} className="form">
         <label>
           タイトル
           <input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="例）駅前のベンチ"
+            placeholder="夕陽が階段に落ちる時間"
           />
         </label>
         <label>
           本文*
-          <textarea
-            value={body}
-            onChange={(e) => setBody(e.target.value)}
-            required
-            rows={4}
-            placeholder="この場所で気づいたこと・記録したいこと"
-          />
+          <textarea value={body} onChange={(e) => setBody(e.target.value)} required rows={5} />
         </label>
         <label>
           タグ（カンマ区切り）
-          <input
-            value={tags}
-            onChange={(e) => setTags(e.target.value)}
-            placeholder="例）散歩,カフェ,静か"
-          />
+          <input value={tags} onChange={(e) => setTags(e.target.value)} placeholder="路地, 風, 商店街" />
         </label>
-
-        <p className="mapStatus">
-          lat: <span className="coord">{selected?.lat ?? "未選択"}</span>
+        <p className="coords">
+          lat: {selected?.lat ?? "未選択"} / lng: {selected?.lng ?? "未選択"}
         </p>
-        <p className="mapStatus">
-          lng: <span className="coord">{selected?.lng ?? "未選択"}</span>
-        </p>
-        {!selected ? <p className="hint">地図をクリックして投稿先の場所を選択してください。</p> : null}
         {error ? <p className="error">{error}</p> : null}
         {success ? <p className="success">{success}</p> : null}
-
-        <div className="mapActions">
-          <button type="submit" disabled={isSaving || !selected}>
-            {isSaving ? "保存中..." : "この場所に保存"}
-          </button>
-        </div>
+        <button className="primaryBtn" type="submit" disabled={isSaving || !selected}>
+          {isSaving ? "保存中..." : "保存"}
+        </button>
       </form>
     </section>
   );
