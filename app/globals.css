@@ -59,3 +59,12 @@ button {
   gap: 8px;
   background: #f9fafb;
 }
+
+.hint {
+  color: #4b5563;
+  margin: 0;
+}
+
+.success {
+  color: #065f46;
+}
