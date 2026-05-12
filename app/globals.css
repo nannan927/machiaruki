@@ -59,3 +59,31 @@ button {
   gap: 8px;
   background: #f9fafb;
 }
+
+.mapStatus {
+  font-size: 0.95rem;
+  padding: 8px;
+  border-radius: 8px;
+  background: #ffffff;
+  border: 1px solid #dbeafe;
+}
+
+.mapActions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.hint {
+  margin-top: 0;
+  color: #4b5563;
+}
+
+.coord {
+  margin: 0;
+  color: #374151;
+}
+
+.success {
+  color: #065f46;
+}
