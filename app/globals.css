@@ -2,25 +2,109 @@
   box-sizing: border-box;
 }
 
+:root {
+  --bg: #f7f5ef;
+  --ink: #212121;
+  --line: #d9d2c8;
+  --paper: #fffdf9;
+  --green: #2f4f3a;
+}
+
 body {
   margin: 0;
-  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
-  background: #f7f8fa;
-  color: #1f2937;
+  font-family: "Hiragino Mincho ProN", "Yu Mincho", "Noto Serif JP", serif;
+  background: var(--bg);
+  color: var(--ink);
 }
 
 .container {
-  max-width: 860px;
+  max-width: 1120px;
   margin: 0 auto;
-  padding: 24px 16px 48px;
+  padding: 32px 20px 56px;
+}
+
+.hero {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.eyebrow {
+  letter-spacing: 0.08em;
+  margin: 0;
+  font-size: 14px;
+}
+
+.appRoot h1 {
+  margin: 8px 0;
+  font-size: clamp(32px, 4.8vw, 56px);
+  font-weight: 500;
+}
+
+.appRoot .lead {
+  margin: 0;
+  font-size: 18px;
+}
+
+.phoneGrid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: start;
 }
 
 .card {
-  background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 22px;
   padding: 16px;
-  margin-top: 16px;
+  box-shadow: 0 8px 18px rgba(20, 20, 20, 0.05);
+}
+
+.cardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.card h2 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 500;
+}
+
+.cardLead {
+  margin: 10px 0 14px;
+  font-size: 14px;
+  color: #444;
+}
+
+.mapStage {
+  position: relative;
+  height: 320px;
+  border-radius: 16px;
+  border: 1px solid #d7d4ce;
+  background:
+    radial-gradient(circle at 25% 20%, #ebefe8 0 13%, transparent 14%),
+    radial-gradient(circle at 70% 67%, #e8edf0 0 18%, transparent 19%),
+    linear-gradient(120deg, #f4f1eb, #ece7de 60%, #f7f2ea 100%);
+  overflow: hidden;
+}
+
+.pin {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: #4e6f5a;
+  transform: translate(-50%, -50%);
+}
+
+.pinActive {
+  width: 14px;
+  height: 14px;
+  background: #5d88bf;
+  box-shadow: 0 0 0 6px rgba(93, 136, 191, 0.2);
 }
 
 .form {
@@ -28,35 +112,52 @@ body {
   gap: 10px;
 }
 
-input,
-textarea,
-button {
+.appRoot input,
+.appRoot textarea,
+.appRoot button {
   width: 100%;
-  padding: 8px;
+  padding: 9px 10px;
   font: inherit;
+  border-radius: 10px;
+  border: 1px solid #d4cec2;
+  background: #fff;
 }
 
-button {
+textarea {
+  resize: vertical;
+}
+
+.primaryBtn {
   cursor: pointer;
+  border: none;
+  color: #fff;
+  background: var(--green);
+  font-weight: 600;
 }
 
-.error {
-  color: #b91c1c;
+.primaryBtn:disabled {
+  opacity: 0.7;
+  cursor: wait;
 }
 
 .memoList {
   margin: 0;
-  padding-left: 0;
+  padding: 0;
   list-style: none;
   display: grid;
-  gap: 10px;
+  gap: 8px;
 }
 
 .memoItem {
-  padding: 12px;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
+  padding: 10px;
+  border: 1px solid #e3ddd2;
+  border-radius: 12px;
   background: #fff;
+}
+
+.memoItem p {
+  margin: 4px 0 8px;
+  line-height: 1.5;
 }
 
 .memoTools {
@@ -98,13 +199,14 @@ button {
   padding-left: 18px;
 }
 
-.mapPlaceholder {
-  border: 1px dashed #9ca3af;
-  border-radius: 8px;
-  padding: 12px;
-  display: grid;
-  gap: 8px;
-  background: #f9fafb;
+.coords,
+.coord {
+  color: #4f4f4f;
+  font-size: 13px;
+}
+
+.coord {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
 }
 
 .mapStatus {
@@ -118,16 +220,21 @@ button {
   justify-content: flex-end;
 }
 
-.coord {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-  font-size: 13px;
-}
-
 .hint {
   color: #4b5563;
   margin: 0;
 }
 
+.error {
+  color: #a03232;
+}
+
 .success {
   color: #065f46;
+}
+
+@media (max-width: 980px) {
+  .phoneGrid {
+    grid-template-columns: 1fr;
+  }
 }
