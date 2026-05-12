@@ -59,3 +59,59 @@ button {
   gap: 8px;
   background: #f9fafb;
 }
+
+.subtle {
+  color: #6b7280;
+  margin-top: 0;
+}
+
+.memoTools {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.tagGroup {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tagGroup button {
+  width: auto;
+  padding: 4px 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 999px;
+  background: #fff;
+}
+
+.tagGroup .activeTag {
+  background: #111827;
+  color: #fff;
+  border-color: #111827;
+}
+
+.statsGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 8px 0 12px;
+}
+
+.statCard {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 10px;
+  display: grid;
+}
+
+.statCard strong {
+  font-size: 18px;
+}
+
+.monthList {
+  margin: 0 0 12px;
+  padding-left: 18px;
+  color: #374151;
+}
