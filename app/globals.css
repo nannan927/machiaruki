@@ -59,3 +59,48 @@ button {
   gap: 8px;
   background: #f9fafb;
 }
+
+.layerButtons {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.layerButtons button {
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background: #f3f4f6;
+}
+
+.layerButtons button.active {
+  border-color: #2563eb;
+  background: #dbeafe;
+  color: #1e3a8a;
+  font-weight: 700;
+}
+
+.layerTitle {
+  font-weight: 700;
+}
+
+.mapLayer-normal {
+  background: linear-gradient(180deg, #f8fafc 0%, #eef2ff 100%);
+}
+
+.mapLayer-night {
+  background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%);
+  color: #e2e8f0;
+  border-color: #334155;
+}
+
+.mapLayer-night button {
+  background: #334155;
+  color: #f8fafc;
+  border: 1px solid #475569;
+}
+
+.mapLayer-walk {
+  background: linear-gradient(180deg, #f0fdf4 0%, #dcfce7 100%);
+  border-color: #86efac;
+}
