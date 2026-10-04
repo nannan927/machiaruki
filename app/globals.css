@@ -258,8 +258,7 @@ textarea {
 .appRoot .dangerBtn { background: #92372d; color: white; }
 .deleteConfirm { border-top: 1px solid var(--line); margin-top: 12px; padding-top: 8px; }
 .mapUnavailable { border: 1px dashed var(--line); border-radius: 16px; min-height: 220px; padding: 28px 18px; display: grid; align-content: center; }
-.selectedMapPin { width: 22px; height: 22px; background: #376bc2; border: 3px solid white; border-radius: 50%; box-shadow: 0 1px 8px #0005; }
-.mapStage { margin-bottom: 12px; }
+.mapStage { margin-bottom: 12px; isolation: isolate; }
 .mapStage button { min-height: unset; }
 .mapStage img { max-width: none; }
 summary { cursor: pointer; padding: 8px 0; }
@@ -282,3 +281,11 @@ summary { cursor: pointer; padding: 8px 0; }
 .notebookTools { display: flex; align-items: center; justify-content: flex-end; gap: 12px; margin-top: 16px; font-size: 14px; }
 .notebookTools button { width: auto; }
 .appRoot button[aria-pressed="true"] { background: #eaf0e5; border-color: var(--green); }
+.mapMode { display: grid; gap: 6px; margin-bottom: 14px; }
+.mapMode small, .mapLegend { color: #4f4f4f; font-size: 12px; line-height: 1.7; }
+.mapLegend { margin: 0 0 10px; }
+.memoMapDot { display: block; width: 26px; height: 30px; border: 2px solid white; border-radius: 50% 50% 50% 4px; background: var(--green); transform: rotate(-35deg); box-shadow: 0 2px 5px #0004; }
+.memoMapLabel { max-width: 160px; overflow: hidden; text-overflow: ellipsis; font: 13px/1.5 "Yu Mincho", serif; color: var(--green); border-color: #cbd6c5; background: #fffdf9f2; }
+.mapStage .leaflet-control-attribution { font-size: 11px; }
+.mapStage .leaflet-control-zoom a { width: 36px; height: 36px; line-height: 36px; }
+.mapLoadError { font-size: 13px; }

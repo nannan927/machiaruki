@@ -1,5 +1,6 @@
 import { spawnSync } from "node:child_process";
-// Explicitly override local credentials. No live Google/Supabase calls during checks.
+// Override local credentials. Legacy Google flags deliberately stay enabled to catch regressions.
+// Browser fixtures mock GSI/Supabase and reject every attempted Google request.
 const env = {
   ...process.env,
   NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: "test-key-never-send-to-google",

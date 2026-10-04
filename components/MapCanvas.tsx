@@ -1,57 +1,140 @@
 "use client";
+
 import { useEffect, useRef, useState } from "react";
-import { importLibrary, setOptions } from "@googlemaps/js-api-loader";
+import L from "leaflet";
 import type { Memo } from "@/types/memo";
 
 type Coords = { lat: number; lng: number };
-type Props = { center: Coords; selected: Coords | null; memos: Memo[]; onSelect: (coords: Coords) => void; onMemoSelect: (memo: Memo) => void };
-let configured = false;
-export function MapCanvas({ center, selected, memos, onSelect, onMemoSelect }: Props) {
+export type LocatedPosition = Coords & { accuracy: number };
+type Props = {
+  selected: Coords | null;
+  location: LocatedPosition | null;
+  memos: Memo[];
+  onSelect: (coords: Coords) => void;
+  onMemoSelect: (memo: Memo) => void;
+};
+const defaultCenter: L.LatLngExpression = [36.7411, 137.0154];
+const tileUrl = "https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png";
+
+export function MapCanvas({ selected, location, memos, onSelect, onMemoSelect }: Props) {
   const host = useRef<HTMLDivElement>(null);
-  const map = useRef<google.maps.Map | null>(null);
+  const map = useRef<L.Map | null>(null);
+  const tiles = useRef<L.TileLayer | null>(null);
   const callbacks = useRef({ onSelect, onMemoSelect });
   const [ready, setReady] = useState(false);
-  const [error, setError] = useState("");
-  const key = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+  const [tileState, setTileState] = useState<"loading" | "ready" | "error">("loading");
   useEffect(() => { callbacks.current = { onSelect, onMemoSelect }; }, [onSelect, onMemoSelect]);
+
   useEffect(() => {
-    if (!key) return;
-    let active = true;
-    let listener: google.maps.MapsEventListener | undefined;
-    const authWindow = window as Window & { gm_authFailure?: () => void };
-    const previousAuthFailure = authWindow.gm_authFailure;
-    const authFailure = () => { if (active) setError("Google Mapsの認証に失敗しました。APIの有効化・請求先・利用サイトの制限を確認してください。"); };
-    authWindow.gm_authFailure = authFailure;
-    const timeout = window.setTimeout(() => { if (active) setError("地図の読み込みがタイムアウトしました。接続とAPIキーの設定を確認し、ページを再読み込みしてください。"); }, 15000);
-    async function init() {
-      try {
-        if (!configured) { setOptions({ key: key!, v: "weekly", language: "ja", region: "JP" }); configured = true; }
-        const { Map } = await importLibrary("maps") as google.maps.MapsLibrary;
-        await importLibrary("marker");
-        if (!active || !host.current) return;
-        map.current = new Map(host.current, { center: { lat: 36.7411, lng: 137.0154 }, zoom: 16, mapId: process.env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID || "DEMO_MAP_ID", streetViewControl: false, mapTypeControl: false, gestureHandling: "cooperative" });
-        listener = map.current.addListener("click", (event: google.maps.MapMouseEvent) => { if (event.latLng) callbacks.current.onSelect(event.latLng.toJSON()); });
-        setReady(true); setError("");
-      } catch { if (active) setError("地図を読み込めませんでした。接続とAPIキーの設定を確認し、ページを再読み込みしてください。"); }
-      finally { window.clearTimeout(timeout); }
-    }
-    void init();
-    return () => { active = false; window.clearTimeout(timeout); listener?.remove(); map.current = null; if (authWindow.gm_authFailure === authFailure) authWindow.gm_authFailure = previousAuthFailure; };
-  }, [key]);
-  useEffect(() => { if (ready) map.current?.panTo(center); }, [center, ready]);
+    if (!host.current) return;
+    const instance = L.map(host.current, {
+      center: defaultCenter, zoom: 16, minZoom: 5, maxZoom: 20,
+      zoomControl: false, zoomAnimation: false, scrollWheelZoom: false, worldCopyJump: true,
+    });
+    map.current = instance;
+    L.control.zoom({ zoomInTitle: "拡大", zoomOutTitle: "縮小" }).addTo(instance);
+    L.control.scale({ imperial: false }).addTo(instance);
+    instance.attributionControl.setPrefix('<a href="https://leafletjs.com/">Leaflet</a>');
+    const layer = L.tileLayer(tileUrl, {
+      minZoom: 5, maxNativeZoom: 18, maxZoom: 20, noWrap: true,
+      updateWhenIdle: true, keepBuffer: 1,
+      attribution: '<a href="https://maps.gsi.go.jp/development/ichiran.html">地理院タイル</a>',
+    });
+    tiles.current = layer;
+    let failed = false;
+    let timer: ReturnType<typeof setTimeout>;
+    layer.on("loading", () => {
+      failed = false;
+      setTileState("loading");
+      clearTimeout(timer);
+      timer = setTimeout(() => setTileState("error"), 12000);
+    });
+    layer.on("tileerror", () => { failed = true; setTileState("error"); });
+    layer.on("load", () => { clearTimeout(timer); setTileState(failed ? "error" : "ready"); });
+    layer.addTo(instance);
+    instance.on("click", (event: L.LeafletMouseEvent) => {
+      const point = event.latlng.wrap();
+      callbacks.current.onSelect({ lat: point.lat, lng: point.lng });
+    });
+    const resize = new ResizeObserver(() => instance.invalidateSize({ pan: false }));
+    resize.observe(host.current);
+    const frame = requestAnimationFrame(() => setReady(true));
+    return () => {
+      cancelAnimationFrame(frame);
+      clearTimeout(timer);
+      resize.disconnect();
+      layer.off();
+      instance.remove();
+      map.current = null;
+      tiles.current = null;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!ready || !selected || !map.current) return;
+    const atLocation = selected.lat === location?.lat && selected.lng === location?.lng;
+    const zoom = atLocation ? Math.max(16, map.current.getZoom()) : map.current.getZoom();
+    map.current.setView([selected.lat, selected.lng], zoom, { animate: false });
+  }, [selected, location, ready]);
+
   useEffect(() => {
     if (!ready || !map.current) return;
-    const markers = memos.map(memo => {
-      const marker = new google.maps.marker.AdvancedMarkerElement({ map: map.current, position: { lat: memo.lat, lng: memo.lng }, title: memo.title || memo.body.slice(0, 40) });
-      marker.addListener("click", () => callbacks.current.onMemoSelect(memo));
-      return marker;
-    });
-    if (selected) {
-      const pin = document.createElement("div"); pin.className = "selectedMapPin";
-      markers.push(new google.maps.marker.AdvancedMarkerElement({ map: map.current, position: selected, title: "選択中の場所", content: pin, zIndex: 1000 }));
+    const layer = L.layerGroup().addTo(map.current);
+    for (const memo of memos) {
+      const label = memo.title || memo.body.slice(0, 40);
+      const dot = document.createElement("span");
+      dot.className = "memoMapDot";
+      // Leaflet accepts HTML strings; use textContent to keep memo text inert.
+      const text = document.createElement("span");
+      text.textContent = label;
+      const marker = L.marker([memo.lat, memo.lng], {
+        icon: L.divIcon({ className: "memoMapMarker", html: dot, iconSize: [28, 36], iconAnchor: [14, 36] }),
+        title: `${label}を開く`, keyboard: true,
+      }).addTo(layer);
+      marker.bindTooltip(text, { permanent: true, direction: "top", offset: [0, -34], className: "memoMapLabel" });
+      marker.on("click", () => callbacks.current.onMemoSelect(memo));
+      marker.on("keydown", (event: L.LeafletKeyboardEvent) => {
+        if (event.originalEvent.key === "Enter" || event.originalEvent.key === " ") {
+          L.DomEvent.stop(event.originalEvent);
+          callbacks.current.onMemoSelect(memo);
+        }
+      });
+      marker.getElement()?.setAttribute("aria-label", `${label}を開く`);
     }
-    return () => { markers.forEach(marker => { google.maps.event.clearInstanceListeners(marker); marker.map = null; }); };
-  }, [memos, selected, ready]);
-  if (!key) return <div className="mapUnavailable"><strong>地図は準備中です</strong><p>Google Mapsの接続設定後に利用できます。下の緯度・経度からも場所を選べます。</p></div>;
-  return <><div ref={host} className="mapStage" aria-label="メモの地図" /><button type="button" disabled={!ready || !!error} onClick={() => { const center = map.current?.getCenter(); if (center) onSelect(center.toJSON()); }}>地図の中央を選ぶ</button>{!ready && !error && <p role="status">地図を読み込み中…</p>}{error && <p className="error" role="alert">{error}</p>}</>;
+    return () => { layer.eachLayer(item => item.off()); layer.remove(); };
+  }, [memos, ready]);
+
+  useEffect(() => {
+    if (!ready || !map.current || !selected) return;
+    const marker = L.circleMarker([selected.lat, selected.lng], {
+      radius: 10, color: "#fff", weight: 3, fillColor: "#ac572e", fillOpacity: 1, interactive: false,
+      className: "selectedLocationMarker",
+    }).addTo(map.current);
+    return () => { marker.remove(); };
+  }, [selected, ready]);
+
+  useEffect(() => {
+    if (!ready || !map.current || !location) return;
+    const point: L.LatLngExpression = [location.lat, location.lng];
+    const layer = L.layerGroup([
+      L.circle(point, { radius: location.accuracy, color: "#376bc2", weight: 1, fillOpacity: .08, interactive: false, className: "locationAccuracy" }),
+      L.circleMarker(point, { radius: 5, color: "#fff", weight: 2, fillColor: "#376bc2", fillOpacity: 1, interactive: false, pane: "markerPane", className: "currentLocationMarker" }),
+    ]).addTo(map.current);
+    return () => { layer.remove(); };
+  }, [location, ready]);
+
+  return <>
+    <div ref={host} className="mapStage" role="region" aria-label="メモの地図" />
+    <p className="mapLegend">緑：保存した言葉　茶：選択中　青：取得時の現在地</p>
+    <button type="button" disabled={!ready} onClick={() => {
+      const point = map.current?.getCenter().wrap();
+      if (point) onSelect({ lat: point.lat, lng: point.lng });
+    }}>地図の中央を選ぶ</button>
+    {tileState === "loading" && <p role="status" className="coords">地図を読み込み中…</p>}
+    {tileState === "error" && <div className="mapLoadError">
+      <p className="error" role="alert">背景地図を読み込めない部分があります。通信状況や表示範囲をご確認ください。現在地・座標からのメモ保存は引き続き使えます。</p>
+      <button type="button" onClick={() => tiles.current?.redraw()}>地図を再読み込み</button>
+    </div>}
+    <p className="coords">日本国内向けの地図です。移動・拡大縮小できます。</p>
+  </>;
 }

@@ -63,9 +63,9 @@ test("password recovery request and invalid recovery page", async ({ page }) => 
   await page.goto("/auth/reset");
   await expect(page.getByText(/リンクが無効か期限切れ/)).toBeVisible();
 });
-test("configured Maps key never loads Google automatically", async ({ page }) => {
+test("legacy Maps configuration cannot enable Google", async ({ page }) => {
   await page.goto("/demo");
-  await expect(page.getByRole("button", { name: "Google Mapsを表示" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Google Mapsを表示" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "デモ地図で場所を選ぶ" })).toBeVisible();
   await page.getByLabel("メモを検索").fill("路地");
   await expect(page.locator(".memoItem")).toHaveCount(1);

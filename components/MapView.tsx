@@ -1,32 +1,69 @@
 "use client";
-import { useState } from "react";
+
+import { useEffect, useRef, useState } from "react";
+import dynamic from "next/dynamic";
 import type { Memo } from "@/types/memo";
-import { MapCanvas } from "@/components/MapCanvas";
+import type { LocatedPosition } from "@/components/MapCanvas";
 import { DemoMap } from "@/components/DemoMap";
+
+const MapCanvas = dynamic(() => import("@/components/MapCanvas").then(module => module.MapCanvas), {
+  ssr: false,
+  loading: () => <div className="mapStage" role="status">地図を準備中…</div>,
+});
 type Coords = { lat: number; lng: number };
 const defaultCenter = { lat: 36.7411, lng: 137.0154 };
+
 export function MapView({ selected, memos, onSelect, onMemoSelect, demo = false }: { demo?: boolean; selected: Coords | null; memos: Memo[]; onSelect: (coords: Coords) => void; onMemoSelect: (memo: Memo) => void }) {
-  const [googleRequested, setGoogleRequested] = useState(false);
-  const mapsEnabled = process.env.NEXT_PUBLIC_GOOGLE_MAPS_ENABLED === "true" && !!process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
-  const useDemoMap = demo && !googleRequested;
+  const [realMap, setRealMap] = useState(!demo);
+  const [location, setLocation] = useState<LocatedPosition | null>(null);
   const [locating, setLocating] = useState(false);
   const [error, setError] = useState("");
+  const locationRequest = useRef(0);
+  const latestSelection = useRef(selected);
+  useEffect(() => { latestSelection.current = selected; }, [selected]);
+  useEffect(() => () => { locationRequest.current++; }, []);
+
+  function select(coords: Coords) {
+    locationRequest.current++;
+    setLocating(false);
+    setError("");
+    onSelect(coords);
+  }
   function locate() {
     if (!navigator.geolocation) { setError("このブラウザーは現在地取得に対応していません。"); return; }
+    const request = ++locationRequest.current;
     setLocating(true); setError("");
-    navigator.geolocation.getCurrentPosition(position => { onSelect({ lat: position.coords.latitude, lng: position.coords.longitude }); setLocating(false); }, err => { setLocating(false); setError(err.code === 1 ? "位置情報が許可されていません。ブラウザーの設定で許可するか、地図・座標から場所を選んでください。" : "現在地を取得できませんでした。地図・座標から選ぶか、再度お試しください。"); }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 });
+    navigator.geolocation.getCurrentPosition(position => {
+      if (request !== locationRequest.current) return;
+      if (latestSelection.current !== selected) { setLocating(false); return; }
+      const coords = { lat: position.coords.latitude, lng: position.coords.longitude };
+      setLocation({ ...coords, accuracy: Number.isFinite(position.coords.accuracy) ? Math.max(0, position.coords.accuracy) : 0 });
+      onSelect(coords);
+      setLocating(false);
+    }, err => {
+      if (request !== locationRequest.current) return;
+      setLocating(false);
+      setError(err.code === 1 ? "位置情報が許可されていません。ブラウザーの設定で許可するか、地図・座標から場所を選んでください。" : "現在地を取得できませんでした。地図・座標から選ぶか、再度お試しください。");
+    }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 });
   }
   function manual(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const data = new FormData(event.currentTarget);
-    onSelect({ lat: Number(data.get("lat")), lng: Number(data.get("lng")) });
+    const coords = { lat: Number(data.get("lat")), lng: Number(data.get("lng")) };
+    if (!Number.isFinite(coords.lat) || !Number.isFinite(coords.lng) || Math.abs(coords.lat) > 90 || Math.abs(coords.lng) > 180) return;
+    select(coords);
   }
   return <section className="card"><div className="cardHeader"><h2>1. 場所を選ぶ</h2><small>表示 {memos.length} 件</small></div>
-    <p className="cardLead">地図をタップして場所を選択。ピンを押すとメモを開けます。</p>
-    {useDemoMap ? <DemoMap selected={selected} memos={memos} onSelect={onSelect} onMemoSelect={onMemoSelect} /> : googleRequested && mapsEnabled ? <MapCanvas center={selected ?? defaultCenter} selected={selected} memos={memos} onSelect={onSelect} onMemoSelect={onMemoSelect} /> : <div className="mapUnavailable"><strong>{mapsEnabled ? "地図を表示して場所を探す" : "地図は準備中です"}</strong><p>現在地や座標の入力でもメモを残せます。</p></div>}
-    <button type="button" onClick={useDemoMap ? () => onSelect({ lat: 36.7411, lng: 137.0154 }) : locate} disabled={locating}>{locating ? "現在地を取得中…" : useDemoMap ? "散歩のスタート地点を選ぶ" : "現在地を選ぶ"}</button>
-    {mapsEnabled && !googleRequested && <button type="button" onClick={() => setGoogleRequested(true)}>Google Mapsを表示</button>}
-
+    <p className="cardLead">地図をタップして場所を選択。緑のピンを押すとメモを開けます。</p>
+    {demo && <div className="mapMode"><button type="button" aria-pressed={realMap} onClick={() => {
+      locationRequest.current++; setLocating(false); setError(""); setRealMap(value => !value);
+    }}>{realMap ? "架空のデモ地図に戻る" : "実際の地図で試す"}</button>
+      <small>サンプルの言葉は架空です。実地図でも保存先はこのブラウザーです。</small></div>}
+    {realMap
+      ? <MapCanvas selected={selected} location={location} memos={memos} onSelect={select} onMemoSelect={memo => { locationRequest.current++; setLocating(false); onMemoSelect(memo); }} />
+      : <DemoMap selected={selected} memos={memos} onSelect={select} onMemoSelect={onMemoSelect} />}
+    <button type="button" onClick={realMap ? locate : () => select(defaultCenter)} disabled={locating}>{locating ? "現在地を取得中…" : realMap ? "現在地を選ぶ" : "散歩のスタート地点を選ぶ"}</button>
+    {realMap && location && <p className="coords">取得時の位置精度：約{Math.round(location.accuracy)}m。ずれている場合は地図で場所を選び直せます。</p>}
     {error && <p role="alert" className="error">{error}</p>}
     <p className="coords">{selected ? `選択中: ${selected.lat.toFixed(5)}, ${selected.lng.toFixed(5)}` : "場所はまだ選択されていません。"}</p>
     <details><summary>緯度・経度で選ぶ</summary><form className="form" onSubmit={manual} key={selected ? `${selected.lat},${selected.lng}` : "initial"}>

@@ -22,7 +22,7 @@ test("login, location, create, search, edit, delete, logout on mobile", async ({
   await page.getByLabel("メールアドレス").fill("walker@example.com");
   await page.getByLabel("パスワード").fill("walking-password");
   await page.getByRole("button", { name: "ログインする", exact: true }).click();
-  await expect(page.getByText("地図を表示して場所を探す")).toBeVisible();
+  await expect(page.getByRole("region", { name: "メモの地図" })).toBeVisible();
   await page.evaluate(() => Object.defineProperty(navigator, "geolocation", { configurable: true, value: { getCurrentPosition: (success: (position: unknown) => void) => success({ coords: { latitude: 35.5, longitude: 139.5 } }) } }));
   await page.getByRole("button", { name: "現在地を選ぶ" }).click();
   await expect(page.getByText("選択中: 35.50000, 139.50000")).toBeVisible();

@@ -6,14 +6,14 @@
 
 - `/demo`: ログイン不要、ブラウザー内に保存。サンプルと架空地図で外部APIなしでも利用可能。
 - `/`: ログインした本人のメモをSupabaseに保存。
-- Google Mapsは初期状態で無効です。公開設定で明示的に有効化し、さらに利用者が表示ボタンを押すまで読み込みません。
+- 本番はLeaflet＋国土地理院の淡色地図を表示。地図用APIキー・課金契約は不要です。デモは「実際の地図で試す」から切り替えられます。
 - 設計・移行・費用管理・公開前の確認は [本番設計と公開手順](docs/PRODUCTION.md) を参照してください。
 
 ## 実装済み
 
 - メール・パスワードの新規登録、メール確認、ログイン、ログアウト
-- Google Mapsでの地点選択、保存済みメモのピン表示、ピンから編集
-- 現在地取得（利用時にブラウザーの許可が必要）、座標の手動入力
+- 地理院地図での地点選択、保存済みの言葉とピンの表示、ピンから編集
+- 現在地取得（利用時にブラウザーの許可が必要）、位置精度の円表示、座標の手動入力
 - メモの作成・一覧・編集・確認付き削除
 - タイトル・本文・タグの検索（空白区切りAND検索、全角英数字対応）、検索結果と地図の連動
 - サーバーでのトークン検証とDBのRLSによるユーザーごとのアクセス制限
@@ -27,10 +27,9 @@
    - `supabase/migrations/20261004000000_private_memos.sql`
    - `supabase/migrations/20261004010000_production_integrity.sql`
 4. Supabase AuthでEmailプロバイダーを有効化。Site URLとRedirect URLsに開発URL（例 `http://localhost:3000`）と本番URLを設定。メール確認を有効にして、メール送信設定も確認。
-5. Google CloudでMaps JavaScript APIと課金を有効化し、APIキーを設定。キーは使用するHTTPリファラーとMaps JavaScript APIに制限。本番用のMap IDを作成して設定（開発時は `DEMO_MAP_ID` を利用）。
-6. `npm run dev` を実行。
+5. `npm run dev` を実行。地図の接続設定は不要です。
 
-現在地取得はHTTPSまたはlocalhostで利用します。地図キーがない場合も、座標入力で場所を指定できます。環境変数変更後は開発サーバーを再起動し、本番では再ビルドしてください。公開する環境変数にservice roleキーや秘密鍵を設定しないでください。
+現在地取得はHTTPSまたはlocalhostで利用します。地図画像が読み込めなくても、現在地・座標入力でメモを保存できます。環境変数変更後は開発サーバーを再起動し、本番では再ビルドしてください。公開する環境変数にservice roleキーや秘密鍵を設定しないでください。
 
 ### 既存メモの扱い
 
@@ -59,6 +58,15 @@ npm run test:e2e
 - `PATCH /api/memos/:id`: `If-Match` に現在のversionを指定して本人のメモを更新（タイトル・本文・緯度経度・タグを送信）
 - `DELETE /api/memos/:id`: `If-Match` に現在のversionを指定して本人のメモを削除
 
-参考: [Google Mapsマーカー](https://developers.google.com/maps/documentation/javascript/advanced-markers/add-marker)、[Supabase RLS](https://supabase.com/docs/guides/database/postgres/row-level-security)。
+参考: [Leaflet](https://leafletjs.com/)、[地理院タイル](https://maps.gsi.go.jp/development/ichiran.html)、[Supabase RLS](https://supabase.com/docs/guides/database/postgres/row-level-security)。
 
 `npm run check` はダミーの接続設定に切り替え、静的検証・API/DBテスト・ブラウザーテスト・ビルドをまとめて実行します。生成されたビルドはテスト用です。公開時は本番環境変数で `npm run build` を実行してください。
+
+## 地図の運用
+
+- 地理院タイルの出典リンクを地図内に表示します。日本国内の利用を想定し、表示に必要な画像のみ読み込みます。地図画像の一括取得・オフライン保存機能はありません。
+- 位置情報は「現在地を選ぶ」を押したときだけ取得し、常時追跡しません。メモを保存するまで座標をアプリのDBへ送信しません。背景地図の配信元には、表示範囲に対応するタイルのリクエストとIP等が届きます。メモの本文は送りません。
+- Google Mapsのコード・依存を削除しました。旧 `NEXT_PUBLIC_GOOGLE_MAPS_*` 設定が残っていても使用しません。Google Cloudの契約・既存キーの設定は変更しません。
+- 地図表示の従量料金はありませんが、アプリのホスト・Supabase・端末の通信費は別です。配信障害や提供範囲外では背景が表示されない場合があります。
+- メモの保存先・座標形式は変更していません。今回の切り替えにDB移行は不要です。地図には検索とページングで読み込んだメモを表示します。
+- OpenPOI APIによる施設検索は未導入です。現在地と任意の場所へのメモ配置には不要で、将来独立して追加できます。
