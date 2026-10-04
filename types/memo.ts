@@ -1,5 +1,7 @@
 export type Memo = {
   id: string;
+  version?: number;
+  user_id: string;
   title: string | null;
   body: string;
   lat: number;

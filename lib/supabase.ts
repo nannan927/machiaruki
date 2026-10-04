@@ -1,18 +1,24 @@
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const timedFetch: typeof fetch = (input, init) => {
+  const timeout = AbortSignal.timeout(12000);
+  const signal = init?.signal ? AbortSignal.any([init.signal, timeout]) : timeout;
+  return fetch(input, { ...init, signal });
+};
+let browserClient: SupabaseClient | null = null;
 
-export function getSupabaseClient() {
-  if (!supabaseUrl || !supabaseAnonKey) {
-    return {
-      client: null,
-      error: "Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY environment variable.",
-    };
-  }
+export function getBrowserClient() {
+  if (!url || !key) return null;
+  browserClient ??= createClient(url, key, { global: { fetch: timedFetch } });
+  return browserClient;
+}
 
-  return {
-    client: createClient(supabaseUrl, supabaseAnonKey),
-    error: null,
-  };
+export function getServerClient(token: string) {
+  if (!url || !key) return null;
+  return createClient(url, key, {
+    global: { fetch: timedFetch, headers: { Authorization: `Bearer ${token}` } },
+    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+  });
 }

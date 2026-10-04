@@ -1,65 +1,38 @@
 "use client";
+import { useEffect, useState } from "react";
+import type { Session } from "@supabase/supabase-js";
+import { getBrowserClient } from "@/lib/supabase";
+import { AuthPanel } from "@/components/AuthPanel";
+import { Notebook } from "@/components/Notebook";
+import Link from "next/link";
 
-import { useCallback, useEffect, useState } from "react";
-import { MapView } from "@/components/MapView";
-import { MemoForm } from "@/components/MemoForm";
-import { MemoList } from "@/components/MemoList";
-import type { Memo } from "@/types/memo";
-
-async function loadMemos() {
-  const response = await fetch("/api/memos");
-  if (!response.ok) {
-    throw new Error("Failed to fetch memos");
-  }
-
-  return (await response.json()) as Memo[];
-}
 
 export default function Home() {
-  const [memos, setMemos] = useState<Memo[]>([]);
-  const [selected, setSelected] = useState<{ lat: number; lng: number } | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchMemos = useCallback(async () => {
-    try {
-      const data = await loadMemos();
-      setMemos(data);
-      setError(null);
-    } catch {
-      setError("メモの取得に失敗しました。Supabase設定を確認してください。");
-    }
-  }, []);
-
+  const [hasDraft, setHasDraft] = useState(false);
+  const [session, setSession] = useState<Session | null>(null);
+  const [ready, setReady] = useState(false);
+  const [error, setError] = useState("");
+  const [signingOut, setSigningOut] = useState(false);
   useEffect(() => {
-    let ignore = false;
-
-    loadMemos()
-      .then((data) => {
-        if (!ignore) {
-          setMemos(data);
-          setError(null);
-        }
-      })
-      .catch(() => {
-        if (!ignore) {
-          setError("メモの取得に失敗しました。Supabase設定を確認してください。");
-        }
-      });
-
-    return () => {
-      ignore = true;
-    };
+    const client = getBrowserClient();
+    if (!client) { queueMicrotask(() => setReady(true)); return; }
+    const timer = window.setTimeout(() => { setError("認証情報を読み込めませんでした。接続を確認してページを再読み込みしてください。"); setReady(true); }, 15000);
+    const { data: { subscription } } = client.auth.onAuthStateChange((event, next) => {
+      if (event === "PASSWORD_RECOVERY") { window.location.replace("/auth/reset"); return; }
+      setSession(next); setReady(true); setError(""); window.clearTimeout(timer);
+    });
+    return () => { window.clearTimeout(timer); subscription.unsubscribe(); };
   }, []);
-
-  return (
-    <main className="container">
-      <h1>Machinote MVP1</h1>
-      <p>街の上に、自分の言葉を置くための最小実装です。</p>
-      {error ? <p className="error">{error}</p> : null}
-
-      <MapView selected={selected} memos={memos} onSelect={setSelected} />
-      <MemoForm selected={selected} onSaved={fetchMemos} />
-      <MemoList memos={memos} />
-    </main>
-  );
+  async function signOut() {
+    if (hasDraft && !window.confirm("未保存の内容を破棄してログアウトしますか？")) return;
+    setSigningOut(true); setError("");
+    try { const result = await getBrowserClient()?.auth.signOut({ scope: "local" }); if (result?.error) throw result.error; }
+    catch { setError("ログアウトできませんでした。もう一度お試しください。"); }
+    finally { setSigningOut(false); }
+  }
+  return <main className="container appRoot"><header className="hero"><p className="eyebrow">街と一緒に考えるアプリ</p><h1>地図の余白</h1><p className="lead">街の余白に、わたしの視点を残す。</p></header>
+    <p className="demoEntry"><Link href="/demo" onClick={event => { if (hasDraft && !window.confirm("未保存の内容を破棄してデモへ移動しますか？")) event.preventDefault(); }}>ログインせずにデモを試す →</Link></p>
+    {error && <p className="error" role="alert">{error}</p>}
+    {!ready ? <p role="status">読み込み中…</p> : session ? <><div className="accountBar"><span>{session.user.email}</span><button type="button" disabled={signingOut} onClick={() => void signOut()}>{signingOut ? "ログアウト中…" : "ログアウト"}</button></div><Notebook key={session.user.id} onUnsavedChange={setHasDraft} /></> : <AuthPanel />}
+  </main>;
 }

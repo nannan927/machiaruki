@@ -1,0 +1,27 @@
+import { test, expect } from "./fixtures";
+test("demo works without external APIs and persists edits", async ({ page }) => {
+  await page.route("https://**/*", route => route.abort());
+  await page.goto("/demo");
+  await expect(page.locator(".memoItem")).toHaveCount(3);
+  await page.getByRole("button", { name: "デモ地図で場所を選ぶ" }).click({ position: { x: 130, y: 180 } });
+  await page.getByLabel("タイトル", { exact: true }).fill("デモで見つけた風景");
+  await page.getByLabel("本文（必須）").fill("橋の上から眺める水面がきれいでした。");
+  await page.getByRole("button", { name: "メモを保存", exact: true }).click();
+  await expect(page.locator(".memoItem")).toHaveCount(4);
+  await page.reload();
+  await expect(page.locator(".memoItem")).toHaveCount(4);
+  await page.getByLabel("メモを検索").fill("デモで見つけた");
+  await expect(page.locator(".memoItem")).toHaveCount(1);
+  await expect(page.locator(".demoMarker")).toHaveCount(1);
+  await page.getByRole("button", { name: "デモで見つけた風景を開く" }).click();
+  await page.getByLabel("本文（必須）").fill("また来たい場所です。");
+  await page.getByRole("button", { name: "変更を保存" }).click();
+  await expect(page.locator(".memoItem").first()).toContainText("また来たい場所です。");
+  await page.locator(".memoItem").first().getByRole("button", { name: "削除", exact: true }).click();
+  await page.getByRole("button", { name: "削除する", exact: true }).click();
+  await expect(page.locator(".memoItem")).toHaveCount(3);
+  await page.reload();
+  await expect(page.locator(".memoItem")).toHaveCount(3);
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});

@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Machinote",
-  description: "City walking creativity app",
+  title: "地図の余白 | Machinote",
+  description: "街歩きの気づきを、場所と一緒に残す自分だけの散歩ノート。",
 };
 
 export default function RootLayout({
