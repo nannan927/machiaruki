@@ -1,8 +1,10 @@
 "use client";
 import { useState } from "react";
+import Link from "next/link";
 import { getBrowserClient } from "@/lib/supabase";
 type Mode = "login" | "signup" | "reset";
 const signupEnabled = process.env.NEXT_PUBLIC_ALLOW_SIGNUP === "true";
+const googleEnabled = process.env.NEXT_PUBLIC_GOOGLE_AUTH_ENABLED === "true";
 export function AuthPanel() {
   const [mode, setMode] = useState<Mode>("login");
   const [email, setEmail] = useState("");
@@ -11,6 +13,20 @@ export function AuthPanel() {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const client = getBrowserClient();
+  async function signInWithGoogle() {
+    if (!client || busy) return;
+    setBusy(true); setMessage("");
+    try {
+      const { error } = await client.auth.signInWithOAuth({
+        provider: "google",
+        options: { redirectTo: `${window.location.origin}/auth/callback` },
+      });
+      if (error) throw error;
+    } catch {
+      setMessage("Googleログインを開始できませんでした。時間を置いてお試しください。");
+      setBusy(false);
+    }
+  }
   async function submit(event: React.FormEvent) {
     event.preventDefault();
     if (!client || busy) return;
@@ -33,8 +49,10 @@ export function AuthPanel() {
   return <section className="card authCard">
     <h2>自分だけの散歩ノート</h2><p>ログインして、見つけた景色や気づきを場所と一緒に残しましょう。</p>
     {!client ? <p role="alert" className="error">保存先が未設定です。管理者が接続設定を行うと利用できます。</p> : <>
+      {googleEnabled && <div className="googleEntry"><button type="button" className="primaryBtn" disabled={busy} onClick={() => void signInWithGoogle()}>Googleで始める・ログイン</button><p>初めての方も、Googleアカウントで始められます。メモは自分だけが読めます。</p></div>}
+      {googleEnabled && <p>メール・パスワードで登録済みの方はこちら</p>}
       <div className="memoTools"><button type="button" disabled={busy} aria-pressed={mode === "login"} onClick={() => changeMode("login")}>ログイン</button>{signupEnabled && <button type="button" disabled={busy} aria-pressed={mode === "signup"} onClick={() => changeMode("signup")}>新規登録</button>}</div>
-      {!signupEnabled && <p>登録済みのアカウントでログインしてください。新規登録は受け付けていません。</p>}
+      {!signupEnabled && !googleEnabled && <p>登録済みのアカウントでログインしてください。新規登録は受け付けていません。</p>}
       <form className="form" onSubmit={submit}><fieldset disabled={busy}>
         <label>メールアドレス<input type="email" autoComplete="email" maxLength={254} required value={email} onChange={e => setEmail(e.target.value)} /></label>
         {mode !== "reset" && <label>パスワード<input type="password" autoComplete={mode === "signup" ? "new-password" : "current-password"} minLength={mode === "signup" ? 8 : undefined} maxLength={128} required value={password} onChange={e => setPassword(e.target.value)} /></label>}
@@ -43,6 +61,7 @@ export function AuthPanel() {
         <p role="status">{message}</p>
       </fieldset></form>
       {mode !== "reset" && <button type="button" disabled={busy} onClick={() => changeMode("reset")}>パスワードを忘れた方</button>}
+      <p><Link href="/privacy">プライバシーポリシー</Link></p>
     </>}
   </section>;
 }

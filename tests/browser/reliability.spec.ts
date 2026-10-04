@@ -89,7 +89,7 @@ test("registration validates password confirmation before sending", async ({ pag
   expect(signups).toBe(1);
 });
 test("personal deployment offers login without registration", async ({ page }) => {
-  test.skip(process.env.NEXT_PUBLIC_ALLOW_SIGNUP !== "false", "Run with NEXT_PUBLIC_ALLOW_SIGNUP=false");
+  test.skip(process.env.NEXT_PUBLIC_ALLOW_SIGNUP !== "false" || process.env.NEXT_PUBLIC_GOOGLE_AUTH_ENABLED !== "false", "Run with both registration flags disabled");
   await page.goto("/");
   await expect(page.getByRole("button", { name: "新規登録", exact: true })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "ログインする", exact: true })).toBeVisible();

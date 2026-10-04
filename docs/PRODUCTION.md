@@ -47,6 +47,8 @@
 
 ## 今回の個人公開
 
+以下は初回公開時の記録。現在の一般公開設定は末尾を参照。
+
 - 本番URL: https://machiaruki-omega.vercel.app （デモは `/demo`）。Vercelプロジェクト `machiaruki`、Hobby、Node.js 22。
 - Git連携のProduction Branchは `codex/production-notebook-checkpoint`。このブランチへのpushは本番デプロイを開始する。
 - Supabaseプロジェクト `roubcmewaeubmvlynxzk`。空のDBであることを確認し、3つの既存migrationをまとめた `supabase/bootstrap-new-project.sql` を単一トランザクションで適用した。既存のmemosがある場合は停止する。新規の空プロジェクト専用で、通常の追加migrationの代わりには使わない。
@@ -54,3 +56,17 @@
 - `supabase/verify-production.sql` で実Supabase上の本人CRUD・検索・version更新・他人の読み書き拒否・匿名拒否を検証済み。検証ユーザーとメモはトランザクションをロールバックして残さない。
 - 新規登録と匿名ログインを無効化、メール確認は有効のまま。Site URLを本番URL、許可Redirect URLを本番の `/auth/reset` に設定。
 - 本人用アカウントの作成と、そのアカウントによる本番ログイン・メモ保存・メール再設定の実動作確認は、本人の入力後に実施する。パスワードはチャットやリポジトリに記録しない。
+
+## Googleログインによる一般公開（2026-10-04）
+
+- 公開URLと保存先DBはそのまま。DBスキーマ・既存メモ・デモを変更しない。
+- 一般向け入口はGoogleログイン。`NEXT_PUBLIC_GOOGLE_AUTH_ENABLED=true`、メール新規登録画面は `NEXT_PUBLIC_ALLOW_SIGNUP=false` のまま。既存のメール・パスワードログインも維持する。
+- SupabaseはGoogleプロバイダーと新規登録を有効にし、匿名ログインは無効、メール確認は有効を維持する。新規登録の許可はプロバイダー共通であり、画面のメール登録フラグはバックエンドの登録禁止ではない。
+- Google Cloudに認証専用プロジェクト `machiaruki-login` を作成。Google Auth Platformの対象は外部・本番。OAuthクライアントはWeb用で、生成元は本番URL、Googleからの戻り先は `https://roubcmewaeubmvlynxzk.supabase.co/auth/v1/callback`。
+- GoogleのクライアントシークレットはSupabaseのGoogle設定にのみ登録し、ソース・Vercel環境変数・ログには保存しない。Maps APIや有料リソースを有効にしない。
+- Supabaseの許可Redirect URLに `https://machiaruki-omega.vercel.app/auth/callback` を追加。ブラウザーSDKがOAuthセッションを保存し、コールバック画面から `/` に戻る。失敗・キャンセル時は再試行へのリンクを表示する。
+- `/privacy` に実装に即したデータの取り扱いを記載し、Googleのアプリ情報とログイン画面からリンクする。
+- SMTPは未設定。メールによる一般登録や一般利用者へのパスワード再設定メールは提供しない。Google利用者はGoogleでログインする。既存メールアカウントの再設定機能はSupabase標準SMTPの送信先制限を受ける。
+- 自動チェックは単体/API/DBテスト34件、ブラウザーテスト28件、個人公開設定テスト1件が成功。Googleの認可URLへの遷移・キャンセル・セッション確立は外部接続をモックして検証し、有料Mapsエンドポイントへの通信がないことも確認する。lint・型検査・本番ビルドも成功。
+- 実Googleアカウントでの同意・新規登録は本番反映後に確認する。設定だけの確認と、実アカウントでの登録確認を区別する。
+- 一般登録を停止する場合はSupabaseの「Allow new users to sign up」を無効化する。Googleボタンを非表示にする場合はVercelの `NEXT_PUBLIC_GOOGLE_AUTH_ENABLED=false` と再デプロイが必要。
