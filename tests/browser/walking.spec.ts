@@ -54,7 +54,7 @@ test("write before choosing a place, restore after reload, then read by day", as
 });
 test("uncertain create persists operation across reload and reconciles without duplicate", async ({ page }) => {
   const state = await setup(page); state.lost = true;
-  await chooseCenter(page); await page.getByRole("button", { name: "ここに残す", exact: true }).click();
+  await chooseCenter(page); await page.getByRole("button", { name: "書く", exact: true }).click();
   await page.getByLabel("この場所で何を見つけましたか？").fill("通信が途切れても残す言葉");
   await page.getByRole("button", { name: "この場所に保存", exact: true }).click(); await expect(page.locator(".walkingNotebook").getByRole("alert")).toContainText("通信を確認できません");
   await page.reload(); await page.getByRole("button", { name: "続きを書く", exact: true }).click();

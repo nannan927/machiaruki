@@ -306,7 +306,7 @@ summary { cursor: pointer; padding: 8px 0; }
 .walkingMap .leaflet-control-zoom a { width: 44px; height: 44px; line-height: 44px; }
 .mapCenterSelect { margin-bottom: 8px; }
 .mapSummary { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px; font: 12px/1.6 system-ui, sans-serif; margin: 8px 0; }
-.mapActionsRow { display: grid; grid-template-columns: 1fr 1.3fr; gap: 10px; margin: 12px 0; }
+.mapActionsRow { margin: 12px 0; }
 .walkingMarker { display: grid; place-items: center; }
 .walkingCluster { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; border: 3px solid #fff; background: #2f4f3a; color: #fff; box-shadow: 0 2px 8px #0003; font: 600 16px system-ui, sans-serif; }
 .walkingNav { position: fixed; bottom: 0; left: 0; right: 0; z-index: 800; margin: auto; max-width: 960px; padding: 10px 16px calc(10px + env(safe-area-inset-bottom)); display: grid; grid-template-columns: 1fr 1.4fr 1fr; gap: 12px; background: #fffdf9f5; border-top: 1px solid var(--line); box-shadow: 0 -4px 20px #0001; }

@@ -189,7 +189,7 @@ export function WalkingNotebook({ owner, onUnsavedChange, onSavingChange }: { ow
     {error && !writing && !detail && <p className="error" role="alert">{error}</p>}
     {localProblem && hasDraft(draft) && !writing && <p className="error" role="alert">{localStatus}</p>}
     <section hidden={tab !== "map"} aria-label="地図で記録を探す">
-      <div className="mapActionsRow"><button disabled={locating} onClick={() => locate(false)}>{locating ? "現在地を取得中…" : "現在地を表示"}</button><button className="primaryBtn" disabled={!editable} onClick={begin}>{hasDraft(draft) ? "下書きを開く" : selected ? "ここに残す" : "言葉を残す"}</button></div>
+      <div className="mapActionsRow"><button disabled={locating} onClick={() => locate(false)}>{locating ? "現在地を取得中…" : "現在地を表示"}</button></div>
       <WalkingMap owner={owner} selected={choosing ? draft.point : selected} focus={focus} location={location} memos={pins} onSelect={select} onBounds={setBounds} onOpen={openMemo} />
       <div className="mapSummary"><span>{mapLoading ? "この範囲の記録を確認中…" : `この範囲に表示中 ${pins.length} 件`}</span><span>緑：記録 · 茶：選択 · 青：取得時の現在地</span></div>
       {truncated && <p role="status">この範囲には200件を超える記録があります。地図を拡大して絞り込んでください。</p>}
