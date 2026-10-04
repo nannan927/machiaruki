@@ -4,6 +4,7 @@ import type { Session } from "@supabase/supabase-js";
 import { getBrowserClient } from "@/lib/supabase";
 import { AuthPanel } from "@/components/AuthPanel";
 import { WalkingNotebook } from "@/components/WalkingNotebook";
+import { GuestTransfer } from "@/components/GuestTransfer";
 import { clearDraft } from "@/lib/walking-draft";
 import Link from "next/link";
 
@@ -15,6 +16,8 @@ export default function Home() {
   const [error, setError] = useState("");
   const [signingOut, setSigningOut] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [transferring, setTransferring] = useState(false);
+  const [importVersion, setImportVersion] = useState(0);
   useEffect(() => {
     const client = getBrowserClient();
     if (!client) { queueMicrotask(() => setReady(true)); return; }
@@ -26,7 +29,7 @@ export default function Home() {
     return () => { window.clearTimeout(timer); subscription.unsubscribe(); };
   }, []);
   async function signOut() {
-    if (saving) return;
+    if (saving || transferring) return;
     if (hasDraft && !window.confirm("この端末の下書きを削除してログアウトしますか？ 保存済みのメモは残ります。")) return;
     setSigningOut(true); setError("");
     try { if (session && hasDraft) await clearDraft(session.user.id); const result = await getBrowserClient()?.auth.signOut({ scope: "local" }); if (result?.error) throw result.error; }
@@ -34,8 +37,9 @@ export default function Home() {
     finally { setSigningOut(false); }
   }
   return <main className={`container appRoot ${session ? "walkingRoot" : ""}`}><header className="hero"><p className="eyebrow">街と一緒に考えるアプリ</p><h1>地図の余白</h1>{!session && <p className="lead">街の余白に、わたしの視点を残す。</p>}</header>
-    {!session && <p className="demoEntry"><Link href="/demo">ログインせずにデモを試す →</Link></p>}
+    {!session && <section className="card guestEntry"><p className="eyebrow">まずは、ひとことから。</p><h2>登録せずに、散歩の記録を残す</h2><p>地図で場所を選んで「書く」。自分の言葉を、すぐに残せます。</p><Link className="entryButton" href="/guest">登録せずに使う →</Link><small>この端末のブラウザーに保存します。あとからGoogleに引き継げます。</small></section>}
     {error && <p className="error" role="alert">{error}</p>}
-    {!ready ? <p role="status">読み込み中…</p> : session ? <><details className="walkingAccount"><summary>アカウント</summary><div className="accountBar"><span>{session.user.email}</span><button type="button" disabled={signingOut || saving} onClick={() => void signOut()}>{signingOut ? "ログアウト中…" : "ログアウト"}</button></div></details><WalkingNotebook key={session.user.id} owner={session.user.id} onUnsavedChange={setHasDraft} onSavingChange={setSaving} /></> : <AuthPanel />}
+    {!ready ? <p role="status">読み込み中…</p> : session ? <><p className="storageLabel">保存先：アカウント</p><details className="walkingAccount"><summary>アカウント</summary><div className="accountBar"><span>{session.user.email}</span><button type="button" disabled={signingOut || saving || transferring} onClick={() => void signOut()}>{signingOut ? "ログアウト中…" : "ログアウト"}</button></div><p>保存先：アカウント。同じアカウントでログインすると、スマホでもパソコンでも読み返せます。</p></details><GuestTransfer key={`transfer:${session.user.id}`} disabled={saving || hasDraft} onBusy={setTransferring} owner={session.user.id} email={session.user.email ?? ""} onComplete={() => setImportVersion(n => n + 1)} /><WalkingNotebook key={session.user.id} revision={importVersion} owner={session.user.id} onUnsavedChange={setHasDraft} onSavingChange={setSaving} /></> : <AuthPanel />}
+    {!session && <p className="guestFooter"><Link href="/demo">以前のデモと記録を開く</Link></p>}
   </main>;
 }

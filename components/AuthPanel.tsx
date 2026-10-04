@@ -47,9 +47,9 @@ export function AuthPanel() {
   }
   function changeMode(value: Mode) { setMode(value); setMessage(""); setPassword(""); setConfirmation(""); }
   return <section className="card authCard">
-    <h2>自分だけの散歩ノート</h2><p>ログインして、見つけた景色や気づきを場所と一緒に残しましょう。</p>
+    <h2>記録を引き継ぐ・ログイン</h2><p>スマホでもパソコンでも、同じ記録を読み返す。機種変更後も、自分のノートに戻れます。</p>
     {!client ? <p role="alert" className="error">保存先が未設定です。管理者が接続設定を行うと利用できます。</p> : <>
-      {googleEnabled && <div className="googleEntry"><button type="button" className="primaryBtn" disabled={busy} onClick={() => void signInWithGoogle()}>Googleで始める・ログイン</button><p>初めての方も、Googleアカウントで始められます。メモは自分だけが読めます。</p></div>}
+      {googleEnabled && <div className="googleEntry"><button type="button" className="primaryBtn" disabled={busy} onClick={() => void signInWithGoogle()}>Googleで始める・ログイン</button><p>別の会員登録は不要です。このブラウザーの記録は、ログイン後に確認して引き継げます。</p></div>}
       {googleEnabled && <p>メール・パスワードで登録済みの方はこちら</p>}
       <div className="memoTools"><button type="button" disabled={busy} aria-pressed={mode === "login"} onClick={() => changeMode("login")}>ログイン</button>{signupEnabled && <button type="button" disabled={busy} aria-pressed={mode === "signup"} onClick={() => changeMode("signup")}>新規登録</button>}</div>
       {!signupEnabled && !googleEnabled && <p>登録済みのアカウントでログインしてください。新規登録は受け付けていません。</p>}

@@ -7,6 +7,7 @@ import { performWrite } from "@/lib/walking-save";
 import { parseMemo } from "@/lib/memo-validation";
 import { dayGroups, memoLabel, type MapBounds, type Point } from "@/lib/walking-data";
 import type { Memo } from "@/types/memo";
+import { importLegacyDemo } from "@/lib/guest-store";
 const WalkingMap = dynamic(() => import("./WalkingMap").then(m => m.WalkingMap), { ssr: false, loading: () => <div className="walkingMap" role="status">地図を準備しています…</div> });
 function Sheet({ title, close, children }: { title: string; close: () => void; children: React.ReactNode }) {
   const ref = useRef<HTMLDialogElement>(null); const exit = useRef(close);
@@ -25,7 +26,7 @@ function Sheet({ title, close, children }: { title: string; close: () => void; c
   }, []);
   return <dialog ref={ref} className="walkingSheet" aria-label={title} onCancel={event => { event.preventDefault(); exit.current(); }}><div className="sheetHeader"><h2>{title}</h2><button type="button" onClick={close} aria-label="閉じる">閉じる</button></div>{children}</dialog>;
 }
-export function WalkingNotebook({ owner, onUnsavedChange, onSavingChange }: { owner: string; onUnsavedChange: (value: boolean) => void; onSavingChange: (value: boolean) => void }) {
+export function WalkingNotebook({ owner, onUnsavedChange, onSavingChange, request = memoRequest, local = false, revision = 0 }: { owner: string; onUnsavedChange: (value: boolean) => void; onSavingChange: (value: boolean) => void; request?: typeof memoRequest; local?: boolean; revision?: number }) {
   const [tab, setTab] = useState<"map" | "notes">("map");
   const [draft, setDraft] = useState<WalkingDraft>(() => emptyDraft(owner));
   const latestDraft = useRef(draft); const [loaded, setLoaded] = useState(false);
@@ -72,7 +73,7 @@ export function WalkingNotebook({ owner, onUnsavedChange, onSavingChange }: { ow
     if (!loaded || !editorAllowed || !hasDraft(draft)) return;
     let active = true;
     // Each edit is enqueued immediately; a last keystroke is not left in a debounce timer.
-    void storeDraft(draft).then(() => { if (active) { durable.current = true; setLocalProblem(false); setLocalStatus("下書きを端末に保存しました。"); } }).catch(() => { if (active) { setLocalProblem(true); setLocalStatus("端末に下書きを保存できません。画面を閉じる前にクラウドへ保存するか、文章をコピーしてください。"); } });
+    void storeDraft(draft).then(() => { if (active) { durable.current = true; setLocalProblem(false); setLocalStatus("下書きを端末に保存しました。"); } }).catch(() => { if (active) { setLocalProblem(true); setLocalStatus("端末に下書きを保存できません。画面を閉じる前に保存するか、文章をコピーしてください。"); } });
     const warn = (event: BeforeUnloadEvent) => { if (busyRef.current || !durable.current) { event.preventDefault(); event.returnValue = ""; } };
     const hidden = () => { if (document.visibilityState === "hidden") void storeDraft(latestDraft.current).catch(() => {}); };
     window.addEventListener("beforeunload", warn); document.addEventListener("visibilitychange", hidden);
@@ -85,27 +86,27 @@ export function WalkingNotebook({ owner, onUnsavedChange, onSavingChange }: { ow
       setMapLoading(true); setMapError("");
       try {
         const params = new URLSearchParams({ ...Object.fromEntries(Object.entries(bounds).map(([k, v]) => [k, String(v)])), q: query });
-        const data = await memoRequest(`/map?${params}`, { signal: controller.signal });
+        const data = await request(`/map?${params}`, { signal: controller.signal });
         if (!controller.signal.aborted) { setPins(data.items); setTruncated(data.truncated); }
       } catch (err) { if (!controller.signal.aborted) setMapError((err as Error).message); }
       finally { if (!controller.signal.aborted) setMapLoading(false); }
     }, 250);
     return () => { clearTimeout(timer); controller.abort(); };
-  }, [bounds, query, refresh, tab]);
+  }, [bounds, query, refresh, tab, request, revision]);
   useEffect(() => {
     if (tab !== "notes") return;
     const controller = new AbortController(); const counter = notesGeneration; const generation = ++counter.current;
     const timer = setTimeout(async () => {
       setNotesLoading(true); setNotesError(""); setCursor(null); setMoreBusy(false);
-      try { const data = await memoRequest(`?q=${encodeURIComponent(query)}`, { signal: controller.signal }); if (!controller.signal.aborted && generation === notesGeneration.current) { setNotes(data.items); setCursor(data.nextCursor); } }
+      try { const data = await request(`?q=${encodeURIComponent(query)}`, { signal: controller.signal }); if (!controller.signal.aborted && generation === notesGeneration.current) { setNotes(data.items); setCursor(data.nextCursor); } }
       catch (err) { if (!controller.signal.aborted) setNotesError((err as Error).message); }
       finally { if (!controller.signal.aborted) setNotesLoading(false); }
     }, 250);
     return () => { clearTimeout(timer); controller.abort(); ++counter.current; };
-  }, [tab, query, refresh]);
+  }, [tab, query, refresh, request, revision]);
   async function more() {
     if (!cursor || moreBusy) return; const generation = notesGeneration.current; setMoreBusy(true);
-    try { const data = await memoRequest(`?q=${encodeURIComponent(query)}&cursor=${encodeURIComponent(cursor)}`); if (generation === notesGeneration.current) { setNotes(items => [...items, ...data.items.filter((m: Memo) => !items.some(existing => existing.id === m.id))]); setCursor(data.nextCursor); } }
+    try { const data = await request(`?q=${encodeURIComponent(query)}&cursor=${encodeURIComponent(cursor)}`); if (generation === notesGeneration.current) { setNotes(items => [...items, ...data.items.filter((m: Memo) => !items.some(existing => existing.id === m.id))]); setCursor(data.nextCursor); } }
     catch (err) { if (generation === notesGeneration.current) setNotesError((err as Error).message); }
     finally { if (generation === notesGeneration.current) setMoreBusy(false); }
   }
@@ -149,11 +150,11 @@ export function WalkingNotebook({ owner, onUnsavedChange, onSavingChange }: { ow
       busyRef.current = true; setBusy(true); setError("");
       const pending = { ...latestDraft.current, pending: operation }; changeDraft(pending);
       try { await storeDraft(pending); } catch { setLocalStatus("端末保存は利用できません。この画面を閉じずに保存結果をご確認ください。"); }
-      const result = await performWrite(operation, retry);
+      const result = await performWrite(operation, retry, request);
       // Clear the durable operation before reporting success, so a restored draft cannot replay it.
-      try { await clearDraft(owner); } catch { setError("クラウドへの保存は完了しましたが、端末の下書きを消せませんでした。再確認してください。"); return; }
+      try { await clearDraft(owner); } catch { setError("記録の保存は完了しましたが、端末の下書きを消せませんでした。再確認してください。"); return; }
       changeDraft(emptyDraft(owner)); setLocalStatus(""); setLocalProblem(false); setWriting(false); setDetail(null); setSelected(null); setChoosing(false); setRefresh(n => n + 1);
-      setMessage(result ? "保存しました。言葉がこの場所に残りました。" : "メモを削除しました。");
+      setMessage(result ? (local ? "このブラウザーに保存しました。" : "保存しました。言葉がこの場所に残りました。") : "メモを削除しました。");
     } catch (err) {
       setError(err instanceof Error ? err.message : "保存できませんでした。下書きは残っています。");
     } finally { busyRef.current = false; setBusy(false); }
@@ -167,17 +168,34 @@ export function WalkingNotebook({ owner, onUnsavedChange, onSavingChange }: { ow
   }
   async function checkRemote() {
     const operation = latestDraft.current.pending; if (!operation) return;
-    try { const memo = await memoRequest(`/${operation.id}`); setDetail([memo]); setWriting(false); }
-    catch (err) { setError(err instanceof MemoRequestError && err.status === 404 ? "サーバーにこの記録はありません。再試行できます。" : (err as Error).message); }
+    try { const memo = await request(`/${operation.id}`); setDetail([memo]); setWriting(false); }
+    catch (err) { setError(err instanceof MemoRequestError && err.status === 404 ? "保存先にこの記録はありません。再試行できます。" : (err as Error).message); }
   }
   async function exportAll() {
     setExporting(true); setError("");
     try {
       const records = new Map<string, Memo>(); let next: string | null = null;
-      do { const data = await memoRequest(next ? `?cursor=${encodeURIComponent(next)}` : ""); for (const memo of data.items) records.set(memo.id, memo); next = data.nextCursor; } while (next);
+      do { const data = await request(next ? `?cursor=${encodeURIComponent(next)}` : ""); for (const memo of data.items) records.set(memo.id, memo); next = data.nextCursor; } while (next);
       const blob = new Blob([JSON.stringify({ format: "machinote", version: 1, exportedAt: new Date().toISOString(), count: records.size, memos: [...records.values()] }, null, 2)], { type: "application/json" });
       const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = `machinote-${new Date().toISOString().slice(0, 10)}.json`; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); setMessage(`${records.size}件を書き出しました。`);
     } catch (err) { setError((err as Error).message); } finally { setExporting(false); }
+  }
+  async function clearLocalRecords() {
+    if (!local || !editorAllowed || busyRef.current || !window.confirm("このブラウザーの記録と下書きをすべて削除しますか？ Googleに引き継いだ記録と旧デモは残ります。元に戻せません。")) return;
+    busyRef.current = true; setBusy(true); setError("");
+    try {
+      await request("/all", { method: "DELETE" }); await clearDraft(owner);
+      changeDraft(emptyDraft(owner)); setDetail(null); setPins([]); setNotes([]); setRefresh(n => n + 1);
+      setMessage("このブラウザーの記録と下書きを削除しました。");
+    } catch (error) { setError((error as Error).message); }
+    finally { busyRef.current = false; setBusy(false); }
+  }
+  async function copyOldDemo() {
+    if (!local || !editorAllowed || busyRef.current) return;
+    busyRef.current = true; setBusy(true); setError("");
+    try { const count = await importLegacyDemo(); setRefresh(n => n + 1); setMessage(count ? `以前のデモから${count}件をコピーしました。サンプルは含めていません。` : "コピーする新しい記録はありません。サンプルは含めません。"); }
+    catch (error) { setRefresh(n => n + 1); setError((error as Error).message); }
+    finally { busyRef.current = false; setBusy(false); }
   }
   const groups = useMemo(() => dayGroups(notes), [notes]);
   const editable = loaded && editorAllowed && !busy;
@@ -203,7 +221,8 @@ export function WalkingNotebook({ owner, onUnsavedChange, onSavingChange }: { ow
       {notesError && <p className="error" role="alert">{notesError}</p>}
       {notesLoading ? <p role="status">記録を読み込み中…</p> : groups.length === 0 ? <p>{query ? "一致する言葉はありません。" : "まだ記録がありません。短い一言から残してみましょう。"}</p> : groups.map(([day, items]) => <section key={day} className="dayGroup"><h3>{day === new Date().toLocaleDateString("ja-JP") ? "今日の散歩" : day} <small>表示中 {items.length}件</small></h3>{items.map(memo => <button className="memoryCard" key={memo.id} onClick={() => openMemo([memo])}><time>{new Date(memo.created_at).toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" })}</time><strong>{memoLabel(memo)}</strong>{memo.title && <span>{memo.body}</span>}{memo.tags.length > 0 && <small>{memo.tags.join(" · ")}</small>}</button>)}</section>)}
       {cursor && <button disabled={notesLoading || moreBusy} onClick={() => void more()}>{moreBusy ? "読み込み中…" : "さらに前の記録を読む"}</button>}
-      <button disabled={exporting} onClick={() => void exportAll()}>{exporting ? "書き出し中…" : "すべての記録を書き出す（JSON）"}</button><small>読み込み済みの件数にかかわらず、本人の全記録を書き出します。</small>
+      <button disabled={exporting} onClick={() => void exportAll()}>{exporting ? "書き出し中…" : "すべての記録を書き出す（JSON）"}</button><small>{local ? "このブラウザーの全記録をファイルに保存します。" : "読み込み済みの件数にかかわらず、本人の全記録を書き出します。"}</small>
+      {local && <details className="localStorageHelp"><summary>このブラウザーの保存について</summary><p>この端末の、このブラウザーだけに保存します。別の端末や別のブラウザーとは共有されません。閲覧データの削除や端末の故障で失うことがあります。</p><p>共用端末では、使い終わったら記録と下書きを削除してください。必要な記録は先に書き出すか、Googleで引き継げます。</p><button type="button" disabled={!editable || hasDraft(draft)} onClick={() => void copyOldDemo()}>以前のデモで書いた記録をコピー</button><p>架空のサンプルは除き、元のデモはそのまま残します。</p><button type="button" disabled={!editable} onClick={() => void clearLocalRecords()}>このブラウザーの記録をすべて削除</button></details>}
     </section>
     <nav className="walkingNav" aria-label="ノートの表示"><button aria-pressed={tab === "map"} onClick={() => setTab("map")}>地図</button><button className="primaryBtn" disabled={!editable} onClick={begin}>書く</button><button aria-pressed={tab === "notes"} onClick={() => setTab("notes")}>ノート</button></nav>
     {writing && <Sheet title={draft.pending?.method === "DELETE" ? "削除結果を確認" : draft.memoId ? "言葉を編集" : "ここで見つけたこと"} close={() => { if (!busy) { geoGeneration.current++; setLocating(false); setWriting(false); } }}>
@@ -215,7 +234,7 @@ export function WalkingNotebook({ owner, onUnsavedChange, onSavingChange }: { ow
       {draft.pending && <p>送信した内容を保全しています。結果を確認してから続きを編集できます。</p>}
       <p className="draftStatus" role="status">{busy ? "通信しています。結果を確認中…" : localStatus || "入力した言葉はこの端末に下書き保存されます。"}</p>
       {error && <p className="error" role="alert">{error}</p>}
-      <div className="sheetSave"><button className="primaryBtn" disabled={!editable || (!draft.pending && (!draft.body.trim() || !draft.point))}>{busy ? "確認中…" : draft.pending ? "結果を確認して再試行" : "この場所に保存"}</button><button type="button" disabled={busy} onClick={() => setWriting(false)}>下書きのまま閉じる</button></div>
+      <div className="sheetSave"><button className="primaryBtn" disabled={!editable || (!draft.pending && (!draft.body.trim() || !draft.point))}>{busy ? "確認中…" : draft.pending ? "結果を確認して再試行" : "この場所に保存"}</button><button type="button" disabled={busy} onClick={() => { geoGeneration.current++; setLocating(false); setWriting(false); }}>下書きのまま閉じる</button></div>
       {draft.pending && <button type="button" disabled={busy} onClick={() => void checkRemote()}>保存済みの記録を確認</button>}
       <button type="button" disabled={busy} onClick={() => void discard()}>端末の下書きを破棄</button>
       <small>端末のデータを消すと下書きも消えます。共有端末ではログアウト時に下書きを削除してください。</small>

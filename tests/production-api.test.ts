@@ -17,6 +17,12 @@ test("production API pagination, replay, conflicts, and errors", async t => {
   let handle: (url: URL, init?: RequestInit) => Response = () => json([]);
   globalThis.fetch = async (url, init) => new URL(String(url)).pathname === "/auth/v1/user" ? json({ id: userId, aud: "authenticated" }) : handle(new URL(String(url)), init);
   try {
+    await t.test("guest import preserves original date and authenticated owner; invalid dates are rejected", async () => {
+      const originalDate = "2026-01-02T00:00:00.000Z";
+      handle = (_url, init) => { const row = JSON.parse(String(init?.body)); assert.equal(row.created_at, originalDate); assert.equal(row.user_id, userId); return json({ ...memo, created_at: originalDate }); };
+      assert.equal((await POST(request("POST", "", { "X-Memo-Created-At": originalDate }))).status, 201);
+      for (const date of ["tomorrow", "2999-01-01T00:00:00.000Z", "1960-01-01T00:00:00.000Z"]) assert.equal((await POST(request("POST", "", { "X-Memo-Created-At": date }))).status, 400);
+    });
     await t.test("51 rows produce 50 results and a safe continuation", async () => {
       handle = url => { assert.equal(url.searchParams.get("limit"), "51"); assert.equal(url.searchParams.get("order"), "created_at.desc,id.desc"); return json(Array.from({ length: 51 }, (_, i) => ({ ...memo, id: `00000000-0000-4000-8000-${String(100 - i).padStart(12, "0")}` }))); };
       const response = await GET(request("GET"));

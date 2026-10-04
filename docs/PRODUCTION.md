@@ -72,3 +72,10 @@
 - 本番と同じGoogle有効・メール新規登録画面無効の組み合わせでも関連ブラウザーテスト6件が成功。公開サイトの `/privacy`・`/demo`・`/api/health` は200、未認証の `/api/memos` は401・`private, no-store` を確認。GitHub Actionsも成功。
 - Google同意画面ではアプリ名の代わりにSupabaseプロジェクトのドメインが表示される。基本プロフィールとメールアドレスだけを要求し、機密スコープやMapsの権限は要求しない。
 - 一般登録を停止する場合はSupabaseの「Allow new users to sign up」を無効化する。Googleボタンを非表示にする場合はVercelの `NEXT_PUBLIC_GOOGLE_AUTH_ENABLED=false` と再デプロイが必要。
+
+## 登録なしで使える入口（2026-10-04）
+
+- トップの主導線を「登録せずに使う」に変更し、`/guest` で本番と同じ地図・書く・ノートを提供する。端末内保存とアカウント保存を画面上で明示する。
+- ログイン後に、対象の記録・アカウントを確認して任意でコピーする。既存ユーザー・メモ・`/demo`・`/classic` は保持し、DBスキーマや認証設定は変更しない。
+- 保存・再試行・旧デモの取り込みの仕様と制約は [GUEST_RELEASE.md](GUEST_RELEASE.md) を参照。
+- `npm run check` 成功：単体/API/DBテスト36件、ブラウザーテスト33件、個人公開設定テスト1件、lint・型検査・本番ビルド。実行時依存の `npm audit --omit=dev --audit-level=high` は脆弱性0件。外部通信はモックし、有料Maps通信がないことを検証した。

@@ -2,10 +2,11 @@ import { getBrowserClient } from "./supabase";
 export class MemoRequestError extends Error {
   constructor(message: string, public status: number) { super(message); }
 }
-export async function memoRequest(path = "", init: RequestInit = {}) {
+export async function memoRequest(path = "", init: RequestInit = {}, expectedOwner?: string) {
   const client = getBrowserClient();
   const session = client ? (await client.auth.getSession()).data.session : null;
   if (!session) throw new MemoRequestError("ログインしてください。", 401);
+  if (expectedOwner && session.user.id !== expectedOwner) throw new MemoRequestError("ログイン先が変わりました。引き継ぎ先を確認し直してください。", 409);
   const headers = new Headers(init.headers);
   headers.set("Content-Type", "application/json");
   headers.set("Authorization", `Bearer ${session.access_token}`);

@@ -24,14 +24,16 @@ export async function POST(request: Request) {
   if (auth.response) return auth.response;
   const id = request.headers.get("idempotency-key") ?? "";
   if (!isUuid(id)) return apiError("保存操作のIDが正しくありません。", 400);
+  const originalDate = request.headers.get("x-memo-created-at");
+  if (originalDate && (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(originalDate) || !Number.isFinite(Date.parse(originalDate)) || Date.parse(originalDate) > Date.now() + 300000 || Date.parse(originalDate) < 0)) return apiError("引き継ぐ記録の日時が正しくありません。", 400);
   const parsed = await readMemo(request);
   if (parsed.response) return parsed.response;
   const input = { ...parsed.input, title: parsed.input.title || null };
-  const { data, error } = await auth.client.from("memos").insert({ ...input, id, user_id: auth.user.id }).select(MEMO_FIELDS).single();
+  const { data, error } = await auth.client.from("memos").insert({ ...input, id, user_id: auth.user.id, ...(originalDate ? { created_at: originalDate } : {}) }).select(MEMO_FIELDS).single();
   if (error?.code === "23505") {
     const { data: existing, error: lookupError } = await auth.client.from("memos").select(MEMO_FIELDS).eq("id", id).eq("user_id", auth.user.id).maybeSingle();
     if (lookupError) return databaseError();
-    if (existing && existing.title === input.title && existing.body === input.body && existing.lat === input.lat && existing.lng === input.lng && JSON.stringify(existing.tags) === JSON.stringify(input.tags)) return NextResponse.json(existing);
+    if (existing && (!originalDate || Date.parse(existing.created_at) === Date.parse(originalDate)) && existing.title === input.title && existing.body === input.body && existing.lat === input.lat && existing.lng === input.lng && JSON.stringify(existing.tags) === JSON.stringify(input.tags)) return NextResponse.json(existing);
     return apiError("同じ保存操作が既に処理されています。一覧を確認してください。", 409);
   }
   if (error) return databaseError();
