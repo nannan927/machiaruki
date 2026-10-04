@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { getBrowserClient } from "@/lib/supabase";
 type Mode = "login" | "signup" | "reset";
+const signupEnabled = process.env.NEXT_PUBLIC_ALLOW_SIGNUP === "true";
 export function AuthPanel() {
   const [mode, setMode] = useState<Mode>("login");
   const [email, setEmail] = useState("");
@@ -13,6 +14,7 @@ export function AuthPanel() {
   async function submit(event: React.FormEvent) {
     event.preventDefault();
     if (!client || busy) return;
+    if (mode === "signup" && !signupEnabled) return;
     if (mode === "signup" && password !== confirmation) { setMessage("パスワードが一致しません。"); return; }
     setBusy(true); setMessage("");
     try {
@@ -31,7 +33,8 @@ export function AuthPanel() {
   return <section className="card authCard">
     <h2>自分だけの散歩ノート</h2><p>ログインして、見つけた景色や気づきを場所と一緒に残しましょう。</p>
     {!client ? <p role="alert" className="error">保存先が未設定です。管理者が接続設定を行うと利用できます。</p> : <>
-      <div className="memoTools"><button type="button" disabled={busy} aria-pressed={mode === "login"} onClick={() => changeMode("login")}>ログイン</button><button type="button" disabled={busy} aria-pressed={mode === "signup"} onClick={() => changeMode("signup")}>新規登録</button></div>
+      <div className="memoTools"><button type="button" disabled={busy} aria-pressed={mode === "login"} onClick={() => changeMode("login")}>ログイン</button>{signupEnabled && <button type="button" disabled={busy} aria-pressed={mode === "signup"} onClick={() => changeMode("signup")}>新規登録</button>}</div>
+      {!signupEnabled && <p>登録済みのアカウントでログインしてください。新規登録は受け付けていません。</p>}
       <form className="form" onSubmit={submit}><fieldset disabled={busy}>
         <label>メールアドレス<input type="email" autoComplete="email" maxLength={254} required value={email} onChange={e => setEmail(e.target.value)} /></label>
         {mode !== "reset" && <label>パスワード<input type="password" autoComplete={mode === "signup" ? "new-password" : "current-password"} minLength={mode === "signup" ? 8 : undefined} maxLength={128} required value={password} onChange={e => setPassword(e.target.value)} /></label>}

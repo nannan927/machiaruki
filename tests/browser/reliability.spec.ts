@@ -72,6 +72,7 @@ test("legacy Maps configuration cannot enable Google", async ({ page }) => {
   // The automatic fixture checks all requests and blocks paid endpoints.
 });
 test("registration validates password confirmation before sending", async ({ page }) => {
+  test.skip(process.env.NEXT_PUBLIC_ALLOW_SIGNUP === "false", "Personal deployment disables signups");
   let signups = 0;
   await page.route("https://test-project.supabase.co/auth/v1/signup**", route => { signups++; return route.fulfill({ json: { user, session: null } }); });
   await page.goto("/");
@@ -86,6 +87,13 @@ test("registration validates password confirmation before sending", async ({ pag
   await page.getByRole("button", { name: "アカウントを作る" }).click();
   await expect(page.getByRole("status")).toContainText("確認メールを送りました");
   expect(signups).toBe(1);
+});
+test("personal deployment offers login without registration", async ({ page }) => {
+  test.skip(process.env.NEXT_PUBLIC_ALLOW_SIGNUP !== "false", "Run with NEXT_PUBLIC_ALLOW_SIGNUP=false");
+  await page.goto("/");
+  await expect(page.getByRole("button", { name: "新規登録", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "ログインする", exact: true })).toBeVisible();
+  await expect(page.getByText(/新規登録は受け付けていません/)).toBeVisible();
 });
 test("authenticated password update handles mismatch and success", async ({ page }) => {
   let updates = 0;
