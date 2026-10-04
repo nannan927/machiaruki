@@ -18,7 +18,7 @@ test("login, location, create, search, edit, delete, logout on mobile", async ({
     memos = [memo];
     return route.fulfill({ status: request.method() === "POST" ? 201 : 200, json: memo });
   });
-  await page.goto("/");
+  await page.goto("/classic");
   await page.getByLabel("メールアドレス").fill("walker@example.com");
   await page.getByLabel("パスワード").fill("walking-password");
   await page.getByRole("button", { name: "ログインする", exact: true }).click();

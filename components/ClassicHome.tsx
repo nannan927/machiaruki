@@ -3,8 +3,7 @@ import { useEffect, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { getBrowserClient } from "@/lib/supabase";
 import { AuthPanel } from "@/components/AuthPanel";
-import { WalkingNotebook } from "@/components/WalkingNotebook";
-import { clearDraft } from "@/lib/walking-draft";
+import { Notebook } from "@/components/Notebook";
 import Link from "next/link";
 
 
@@ -14,7 +13,6 @@ export default function Home() {
   const [ready, setReady] = useState(false);
   const [error, setError] = useState("");
   const [signingOut, setSigningOut] = useState(false);
-  const [saving, setSaving] = useState(false);
   useEffect(() => {
     const client = getBrowserClient();
     if (!client) { queueMicrotask(() => setReady(true)); return; }
@@ -26,16 +24,15 @@ export default function Home() {
     return () => { window.clearTimeout(timer); subscription.unsubscribe(); };
   }, []);
   async function signOut() {
-    if (saving) return;
-    if (hasDraft && !window.confirm("この端末の下書きを削除してログアウトしますか？ 保存済みのメモは残ります。")) return;
+    if (hasDraft && !window.confirm("未保存の内容を破棄してログアウトしますか？")) return;
     setSigningOut(true); setError("");
-    try { if (session && hasDraft) await clearDraft(session.user.id); const result = await getBrowserClient()?.auth.signOut({ scope: "local" }); if (result?.error) throw result.error; }
+    try { const result = await getBrowserClient()?.auth.signOut({ scope: "local" }); if (result?.error) throw result.error; }
     catch { setError("ログアウトできませんでした。もう一度お試しください。"); }
     finally { setSigningOut(false); }
   }
-  return <main className={`container appRoot ${session ? "walkingRoot" : ""}`}><header className="hero"><p className="eyebrow">街と一緒に考えるアプリ</p><h1>地図の余白</h1>{!session && <p className="lead">街の余白に、わたしの視点を残す。</p>}</header>
-    {!session && <p className="demoEntry"><Link href="/demo">ログインせずにデモを試す →</Link></p>}
+  return <main className="container appRoot"><header className="hero"><p className="eyebrow">街と一緒に考えるアプリ</p><h1>地図の余白</h1><p className="lead">街の余白に、わたしの視点を残す。</p></header>
+    <p className="demoEntry"><Link href="/demo" onClick={event => { if (hasDraft && !window.confirm("未保存の内容を破棄してデモへ移動しますか？")) event.preventDefault(); }}>ログインせずにデモを試す →</Link></p>
     {error && <p className="error" role="alert">{error}</p>}
-    {!ready ? <p role="status">読み込み中…</p> : session ? <><details className="walkingAccount"><summary>アカウント</summary><div className="accountBar"><span>{session.user.email}</span><button type="button" disabled={signingOut || saving} onClick={() => void signOut()}>{signingOut ? "ログアウト中…" : "ログアウト"}</button></div></details><WalkingNotebook key={session.user.id} owner={session.user.id} onUnsavedChange={setHasDraft} onSavingChange={setSaving} /></> : <AuthPanel />}
+    {!ready ? <p role="status">読み込み中…</p> : session ? <><div className="accountBar"><span>{session.user.email}</span><button type="button" disabled={signingOut} onClick={() => void signOut()}>{signingOut ? "ログアウト中…" : "ログアウト"}</button></div><Notebook key={session.user.id} onUnsavedChange={setHasDraft} /></> : <AuthPanel />}
   </main>;
 }

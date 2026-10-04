@@ -4,7 +4,7 @@ const user = { id: "11111111-1111-4111-8111-111111111111", aud: "authenticated",
 const memo = { id: "22222222-2222-4222-8222-222222222222", user_id: user.id, title: "保存済みの道", body: "以前のメモ", tags: [], lat: 35, lng: 139, version: 1, created_at: "2026-10-04T00:00:00Z", updated_at: "2026-10-04T00:00:00Z" };
 async function auth(page: Page) {
   await page.route("https://test-project.supabase.co/auth/v1/**", route => route.fulfill({ json: route.request().url().includes("/token") ? { access_token: "test-token", refresh_token: "test-refresh", token_type: "bearer", expires_in: 3600, user } : { user } }));
-  await page.goto("/");
+  await page.goto("/classic");
   await page.getByLabel("メールアドレス").fill(user.email);
   await page.getByLabel("パスワード", { exact: true }).fill("walking-password");
   await page.getByRole("button", { name: "ログインする", exact: true }).click();

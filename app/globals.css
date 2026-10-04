@@ -289,3 +289,54 @@ summary { cursor: pointer; padding: 8px 0; }
 .mapStage .leaflet-control-attribution { font-size: 11px; }
 .mapStage .leaflet-control-zoom a { width: 36px; height: 36px; line-height: 36px; }
 .mapLoadError { font-size: 13px; }
+
+/* Walking experience. Legacy notebook and demo styles are preserved above. */
+.walkingRoot { max-width: 960px; padding: 16px 16px calc(100px + env(safe-area-inset-bottom)); }
+.walkingRoot .hero { text-align: left; margin: 0 0 8px; }
+.walkingRoot .hero h1 { font-size: 28px; margin: 2px 0; }
+.walkingRoot .eyebrow { font-size: 12px; }
+.walkingAccount { margin-bottom: 8px; font-size: 14px; }
+.walkingSearch { display: flex; align-items: end; gap: 10px; margin-bottom: 12px; }
+.walkingSearch label { flex: 1; font-size: 13px; }
+.walkingSearch input { display: block; margin-top: 4px; }
+.walkingSearch button { width: auto; }
+.walkingNotebook input, .walkingNotebook textarea { font-family: system-ui, sans-serif !important; font-size: 16px !important; }
+.walkingNotebook [hidden] { display: none !important; }
+.walkingMap { height: min(60dvh, 540px); min-height: 280px; }
+.walkingMap .leaflet-control-zoom a { width: 44px; height: 44px; line-height: 44px; }
+.mapCenterSelect { margin-bottom: 8px; }
+.mapSummary { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px; font: 12px/1.6 system-ui, sans-serif; margin: 8px 0; }
+.mapActionsRow { display: grid; grid-template-columns: 1fr 1.3fr; gap: 10px; margin: 12px 0; }
+.walkingMarker { display: grid; place-items: center; }
+.walkingCluster { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; border: 3px solid #fff; background: #2f4f3a; color: #fff; box-shadow: 0 2px 8px #0003; font: 600 16px system-ui, sans-serif; }
+.walkingNav { position: fixed; bottom: 0; left: 0; right: 0; z-index: 800; margin: auto; max-width: 960px; padding: 10px 16px calc(10px + env(safe-area-inset-bottom)); display: grid; grid-template-columns: 1fr 1.4fr 1fr; gap: 12px; background: #fffdf9f5; border-top: 1px solid var(--line); box-shadow: 0 -4px 20px #0001; }
+.walkingSheet { color: var(--ink); background: var(--paper); border: 1px solid var(--line); border-radius: 24px 24px 0 0; width: min(100%, 680px); max-width: 100%; max-height: 88dvh; margin: auto auto 0; padding: 20px 20px calc(20px + env(safe-area-inset-bottom)); overflow: auto; overscroll-behavior: contain; }
+.walkingSheet::backdrop { background: #17231c70; }
+.sheetHeader { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+.sheetHeader h2 { font-size: 22px; margin: 0; }
+.sheetHeader button { width: auto; }
+.walkingSheet fieldset { min-width: 0; padding: 0; margin: 0; border: 0; display: grid; gap: 14px; }
+.walkingSheet label { display: grid; gap: 8px; margin-bottom: 12px; }
+.walkingSheet textarea { resize: vertical; min-height: 140px; }
+.walkingSheet button { margin-bottom: 8px; }
+.walkingSheet small { display: block; line-height: 1.7; color: #52604e; }
+.sheetSave { position: sticky; bottom: -20px; background: var(--paper); padding-top: 12px; display: grid; grid-template-columns: 1.4fr 1fr; gap: 8px; border-top: 1px solid var(--line); }
+.placeConfirm { background: #eaf0e5; padding: 12px; border-radius: 12px; }
+.draftStatus { font: 13px/1.6 system-ui, sans-serif; color: #52604e; }
+.draftBanner { display: flex; align-items: center; gap: 12px; background: #f3e9d1; padding: 10px 12px; border-radius: 12px; margin-bottom: 12px; }
+.draftBanner span { flex: 1; font-size: 14px; }
+.draftBanner button { width: auto; }
+.memoryCard { display: grid; gap: 8px; text-align: left; background: var(--paper); border: 1px solid var(--line); padding: 16px !important; margin: 0 0 12px; }
+.memoryCard time { font: 13px system-ui, sans-serif; color: #52604e; }
+.memoryCard strong, .memoryCard span, .memoryDetail { overflow-wrap: anywhere; }
+.memoryCard span { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; white-space: pre-wrap; }
+.dayGroup { margin-bottom: 24px; }
+.dayGroup h3 { font-size: 18px; border-bottom: 1px solid var(--line); padding-bottom: 10px; }
+.dayGroup h3 small { font-size: 12px; font-weight: normal; margin-left: 10px; }
+.memoryDetail .memoBody { line-height: 1.9; font-size: 18px; }
+.walkingNotes > small { display: block; margin: 8px 0; }
+.selectionHint { background: #eaf0e5; border-radius: 12px; padding: 12px; }
+@media (max-width: 420px) { .walkingRoot { padding: 12px 10px 110px; } .walkingMap { height: 48dvh; } .walkingSheet { padding: 16px 14px calc(16px + env(safe-area-inset-bottom)); } .sheetHeader h2 { font-size: 20px; } }
+.walkingSheet { position: fixed; top: auto; }
+.sheetSave button { font-size: 14px; }
+@media (max-width: 420px) { .walkingMap { height: 40dvh; min-height: 240px; } }

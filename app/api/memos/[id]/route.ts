@@ -3,6 +3,17 @@ import { authorize, apiError, databaseError, readMemo, readVersion } from "@/lib
 import { isUuid, MEMO_FIELDS } from "@/lib/memo-page";
 type Context = { params: Promise<{ id: string }> };
 const conflict = () => apiError("このメモは別の画面で更新または削除されました。入力内容を控え、一覧を再読み込みしてください。", 409);
+export async function GET(request: Request, context: Context) {
+  const auth = await authorize(request);
+  if (auth.response) return auth.response;
+  const { id } = await context.params;
+  if (!isUuid(id)) return apiError("メモが見つかりません。", 404);
+  try {
+    const { data, error } = await auth.client.from("memos").select(MEMO_FIELDS).eq("id", id).eq("user_id", auth.user.id).maybeSingle();
+    if (error) return databaseError();
+    return data ? NextResponse.json(data, { headers: { "Cache-Control": "private, no-store" } }) : apiError("メモが見つかりません。", 404);
+  } catch { return databaseError(); }
+}
 export async function PATCH(request: Request, context: Context) {
   const auth = await authorize(request);
   if (auth.response) return auth.response;
