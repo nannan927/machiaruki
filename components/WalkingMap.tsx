@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import L from "leaflet";
 import type { Memo } from "@/types/memo";
 import { memoLabel, type MapBounds, type Point } from "@/lib/walking-data";
-type Props = { owner: string; memos: Memo[]; selected: Point | null; focus: Point | null; location: (Point & { accuracy: number }) | null; onSelect: (point: Point) => void; onBounds: (bounds: MapBounds) => void; onOpen: (memos: Memo[]) => void };
+type Props = { showCenterSelect?: boolean; owner: string; memos: Memo[]; selected: Point | null; focus: Point | null; location: (Point & { accuracy: number }) | null; onSelect: (point: Point) => void; onBounds: (bounds: MapBounds) => void; onOpen: (memos: Memo[]) => void };
 export function WalkingMap(props: Props) {
   const host = useRef<HTMLDivElement>(null); const map = useRef<L.Map | null>(null);
   const callbacks = useRef(props); const tile = useRef<L.TileLayer | null>(null);
@@ -71,5 +71,5 @@ export function WalkingMap(props: Props) {
     }
     return () => { layer.remove(); };
   }, [ready, props.selected, props.location]);
-  return <><div className="mapStage walkingMap" ref={host} role="region" aria-label="思い出の地図" /><button className="mapCenterSelect" onClick={() => { const p = map.current?.getCenter().wrap(); if (p) props.onSelect({ lat: p.lat, lng: p.lng }); }}>地図の中央を選ぶ</button>{error && <p className="error" role="alert">背景地図を取得できません。現在地や選択済みの場所で記録できます。<button onClick={() => tile.current?.redraw()}>地図を再読み込み</button></p>}</>;
+  return <><div className="mapStage walkingMap" ref={host} role="region" aria-label="思い出の地図" /><button hidden={props.showCenterSelect === false} className="mapCenterSelect" onClick={() => { const p = map.current?.getCenter().wrap(); if (p) props.onSelect({ lat: p.lat, lng: p.lng }); }}>地図の中央を選ぶ</button>{error && <p className="error" role="alert">背景地図を取得できません。現在地や選択済みの場所で記録できます。<button onClick={() => tile.current?.redraw()}>地図を再読み込み</button></p>}</>;
 }

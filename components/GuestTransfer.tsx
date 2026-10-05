@@ -6,7 +6,7 @@ import { memoRequest } from "@/lib/client-api";
 import { parseMemo } from "@/lib/memo-validation";
 import type { Memo } from "@/types/memo";
 
-export function GuestTransfer({ owner, email, onComplete, disabled = false, onBusy }: { owner: string; email: string; onComplete: () => void; disabled?: boolean; onBusy: (busy: boolean) => void }) {
+export function GuestTransfer({ owner, email, onComplete, disabled = false, onBusy, onAvailable }: { owner: string; email: string; onComplete: () => void; disabled?: boolean; onBusy: (busy: boolean) => void; onAvailable?: (count: number) => void }) {
   const [count, setCount] = useState(0);
   const [preview, setPreview] = useState<Memo[] | null>(null);
   const [confirmed, setConfirmed] = useState(false);
@@ -15,9 +15,9 @@ export function GuestTransfer({ owner, email, onComplete, disabled = false, onBu
   const [error, setError] = useState("");
   useEffect(() => {
     let active = true;
-    void guestRecords().then(records => { if (active) setCount(records.length); }).catch(() => { if (active) setError("このブラウザーの記録を確認できません。元の記録は変更していません。"); });
+    void Promise.all([guestRecords(), importReceipts()]).then(([records, receipts]) => { if (active) { setCount(records.length); onAvailable?.(records.filter(m => !receipts.some(r => r.key === receiptKey(owner, m) && r.done)).length); } }).catch(() => { if (active) setError("このブラウザーの記録を確認できません。元の記録は変更していません。"); });
     return () => { active = false; };
-  }, [owner]);
+  }, [owner, onAvailable]);
   async function review() {
     setError(""); setConfirmed(false);
     try {

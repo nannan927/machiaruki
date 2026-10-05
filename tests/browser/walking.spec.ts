@@ -27,7 +27,7 @@ async function setup(page: Page, initial: Memo[] = []) {
   await expect(page.getByRole("region", { name: "思い出の地図" })).toBeVisible();
   return state;
 }
-async function chooseCenter(page: Page) { await page.getByRole("button", { name: "地図の中央を選ぶ", exact: true }).click(); }
+async function chooseCenter(page: Page) { if (!await page.getByRole("button", { name: "地図の中央を選ぶ", exact: true }).isVisible()) await page.getByRole("button", { name: "場所を選ぶ", exact: true }).click(); await page.getByRole("button", { name: "地図の中央を選ぶ", exact: true }).click(); }
 async function persist(page: Page) { await expect(page.getByRole("status").filter({ hasText: "下書きを端末に保存しました" })).toBeVisible(); }
 test("write before choosing a place, restore after reload, then read by day", async ({ page }) => {
   const state = await setup(page);
@@ -49,7 +49,7 @@ test("write before choosing a place, restore after reload, then read by day", as
   await expect(page.locator(".memoryCard")).toContainText("もう一度来たいパン屋");
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.screenshot({ path: "/tmp/machiaruki-walking-notes.png", fullPage: true });
-  await page.locator(".memoryCard").click(); page.once("dialog", d => d.accept()); await page.getByRole("button", { name: "削除する", exact: true }).click();
+  await page.locator(".memoryCard").click(); await page.getByRole("button", { name: "この記録を削除", exact: true }).click(); await page.getByRole("button", { name: "この1件を削除", exact: true }).click();
   await expect(page.getByText("メモを削除しました。", { exact: true })).toBeVisible(); expect(state.memos).toHaveLength(0);
 });
 test("uncertain create persists operation across reload and reconciles without duplicate", async ({ page }) => {
@@ -82,7 +82,7 @@ test("location rejection preserves words; manual selection and logout clear priv
   await page.getByRole("button", { name: "書く", exact: true }).click(); await page.getByLabel("この場所で何を見つけましたか？").fill("位置情報がなくても書ける"); await persist(page);
   await page.getByRole("button", { name: "現在地を使う", exact: true }).click(); await expect(page.locator(".walkingNotebook").getByRole("alert")).toContainText("位置情報が許可されていません");
   await expect(page.getByLabel("この場所で何を見つけましたか？")).toHaveValue("位置情報がなくても書ける");
-  await page.getByRole("button", { name: "下書きのまま閉じる", exact: true }).click(); await page.getByText("アカウント", { exact: true }).click(); page.once("dialog", d => d.accept()); await page.getByRole("button", { name: "ログアウト", exact: true }).click();
+  await page.getByRole("button", { name: "下書きのまま閉じる", exact: true }).click(); await page.getByRole("button", { name: "メニュー", exact: true }).click(); await page.getByRole("button", { name: /保存先・アカウント/ }).click(); page.once("dialog", d => d.accept()); await page.getByRole("button", { name: "ログアウト", exact: true }).click();
   await expect(page.getByRole("button", { name: "ログインする", exact: true })).toBeVisible();
   const saved = await page.evaluate(() => new Promise(resolve => { const db = indexedDB.open("machinote-private-drafts", 1); db.onsuccess = () => { const req = db.result.transaction("drafts").objectStore("drafts").getAll(); req.onsuccess = () => { resolve(req.result); db.result.close(); }; }; }));
   expect(saved).toEqual([]);
@@ -120,7 +120,8 @@ test("map finds an old memo excluded from first 50 notes, export includes every 
   await expect(page.locator(".walkingNotes")).not.toContainText(old.body);
   await page.getByRole("button", { name: "地図", exact: true }).click(); await page.getByRole("button", { name: old.body, exact: true }).click(); await expect(page.locator(".memoryDetail")).toContainText(old.body); await page.getByRole("button", { name: "閉じる", exact: true }).click();
   await page.getByRole("button", { name: "ノート", exact: true }).click();
-  const downloadEvent = page.waitForEvent("download"); await page.getByRole("button", { name: "すべての記録を書き出す（JSON）" }).click(); const download = await downloadEvent;
+  await page.getByRole("button", { name: "メニュー", exact: true }).click(); await page.getByRole("button", { name: /記録の管理/ }).click(); await page.getByRole("button", { name: /記録をダウンロード/ }).click();
+  const downloadEvent = page.waitForEvent("download"); await page.getByRole("button", { name: "ダウンロードする" }).click(); const download = await downloadEvent;
   const fs = await import("node:fs/promises"); const data = JSON.parse(await fs.readFile((await download.path())!, "utf8")); expect(data.count).toBe(51); expect(data.memos.some((m: Memo) => m.id === old.id)).toBe(true);
 });
 test("drafts are isolated by account and cannot appear for another owner", async ({ page }) => {
@@ -138,4 +139,27 @@ test("late GPS does not overwrite a manually chosen draft location", async ({ pa
   await page.evaluate(() => (window as unknown as { finishLocation: () => void }).finishLocation());
   await expect(page.locator(".placeConfirm small")).toHaveText(chosen!);
   expect(chosen).not.toBe("35.00000, 139.00000");
+});
+
+test("lost delete response keeps a durable operation and a retry reconciles without deleting twice", async ({ page }) => {
+  const state = await setup(page, [old]); let deletes = 0;
+  await page.route(`**/api/memos/${old.id}`, route => {
+    if (route.request().method() !== "DELETE") return route.fallback();
+    deletes++; expect(route.request().headers()["if-match"]).toBe("1"); state.memos = []; return route.abort();
+  });
+  await page.getByRole("button", { name: "ノート", exact: true }).click(); await page.locator(".memoryCard").click();
+  await page.getByRole("button", { name: "この記録を削除", exact: true }).click(); await page.getByRole("button", { name: "この1件を削除", exact: true }).click();
+  await expect(page.getByRole("dialog", { name: "削除結果を確認" }).getByRole("alert")).toContainText("通信を確認できません");
+  await page.reload(); await page.getByRole("button", { name: "続きを書く", exact: true }).click();
+  await page.getByRole("button", { name: "結果を確認して再試行", exact: true }).click();
+  await expect(page.getByText("メモを削除しました。", { exact: true })).toBeVisible(); expect(deletes).toBe(1);
+});
+
+test("delete conflict retains the remote record and does not claim success", async ({ page }) => {
+  const state = await setup(page, [old]);
+  await page.route(`**/api/memos/${old.id}`, route => route.request().method() === "DELETE" ? route.fulfill({ status: 409, json: { error: "別の変更が見つかりました。" } }) : route.fallback());
+  await page.getByRole("button", { name: "ノート", exact: true }).click(); await page.locator(".memoryCard").click();
+  await page.getByRole("button", { name: "この記録を削除", exact: true }).click(); await page.getByRole("button", { name: "この1件を削除", exact: true }).click();
+  await expect(page.getByRole("dialog", { name: "削除結果を確認" }).getByRole("alert")).toContainText("別の変更");
+  expect(state.memos).toHaveLength(1); await expect(page.getByText("メモを削除しました。", { exact: true })).toHaveCount(0);
 });

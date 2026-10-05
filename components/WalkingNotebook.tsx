@@ -1,6 +1,9 @@
 "use client";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
+import { NotebookSheet as Sheet } from "./NotebookSheet";
+import { NotebookMenu, type MenuPanel } from "./NotebookMenu";
+import { SwipeMemo } from "./SwipeMemo";
 import { memoRequest, MemoRequestError } from "@/lib/client-api";
 import { clearDraft, editDraft, emptyDraft, hasDraft, loadDraft, storeDraft, type WalkingDraft, type PendingWrite } from "@/lib/walking-draft";
 import { performWrite } from "@/lib/walking-save";
@@ -9,29 +12,24 @@ import { dayGroups, memoLabel, type MapBounds, type Point } from "@/lib/walking-
 import type { Memo } from "@/types/memo";
 import { importLegacyDemo } from "@/lib/guest-store";
 const WalkingMap = dynamic(() => import("./WalkingMap").then(m => m.WalkingMap), { ssr: false, loading: () => <div className="walkingMap" role="status">地図を準備しています…</div> });
-function Sheet({ title, close, children }: { title: string; close: () => void; children: React.ReactNode }) {
-  const ref = useRef<HTMLDialogElement>(null); const exit = useRef(close);
-  useEffect(() => { exit.current = close; }, [close]);
+export function WalkingNotebook({ owner, onUnsavedChange, onSavingChange, request = memoRequest, local = false, revision = 0, accountContent, transferCount = 0, transferring = false }: { owner: string; onUnsavedChange: (value: boolean) => void; onSavingChange: (value: boolean) => void; request?: typeof memoRequest; local?: boolean; revision?: number; accountContent?: React.ReactNode; transferCount?: number; transferring?: boolean }) {
+  const [menu, setMenu] = useState<MenuPanel | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Memo | null>(null);
+  const [deleteFocus, setDeleteFocus] = useState<HTMLElement | null>(null);
+  const [swipe, setSwipe] = useState<{ id: string; scope: string } | null>(null);
+  const [swipeHint, setSwipeHint] = useState(false);
+  const [storageIntro, setStorageIntro] = useState(false);
   useEffect(() => {
-    const dialog = ref.current; const previous = document.activeElement as HTMLElement | null;
-    dialog?.showModal();
-    const viewport = window.visualViewport;
-    const resize = () => {
-      if (!dialog || !viewport) return;
-      dialog.style.maxHeight = `${Math.max(160, viewport.height - 24)}px`;
-      dialog.style.bottom = `${Math.max(0, window.innerHeight - viewport.height - viewport.offsetTop)}px`;
-    };
-    resize(); viewport?.addEventListener("resize", resize); viewport?.addEventListener("scroll", resize);
-    return () => { viewport?.removeEventListener("resize", resize); viewport?.removeEventListener("scroll", resize); dialog?.close(); previous?.focus(); };
-  }, []);
-  return <dialog ref={ref} className="walkingSheet" aria-label={title} onCancel={event => { event.preventDefault(); exit.current(); }}><div className="sheetHeader"><h2>{title}</h2><button type="button" onClick={close} aria-label="閉じる">閉じる</button></div>{children}</dialog>;
-}
-export function WalkingNotebook({ owner, onUnsavedChange, onSavingChange, request = memoRequest, local = false, revision = 0 }: { owner: string; onUnsavedChange: (value: boolean) => void; onSavingChange: (value: boolean) => void; request?: typeof memoRequest; local?: boolean; revision?: number }) {
+    const timer = setTimeout(() => { try { setStorageIntro(local && !localStorage.getItem("machinote-storage-intro-v1")); setSwipeHint(!localStorage.getItem("machinote-swipe-hint-v1")); } catch { setStorageIntro(local); setSwipeHint(true); } }, 0);
+    return () => clearTimeout(timer);
+  }, [local]);
+  function dismissIntro() { setStorageIntro(false); try { localStorage.setItem("machinote-storage-intro-v1", "seen"); } catch {} }
   const [tab, setTab] = useState<"map" | "notes">("map");
   const [draft, setDraft] = useState<WalkingDraft>(() => emptyDraft(owner));
   const latestDraft = useRef(draft); const [loaded, setLoaded] = useState(false);
   const [editorAllowed, setEditorAllowed] = useState(false);
   const [writing, setWriting] = useState(false); const [choosing, setChoosing] = useState(false);
+  const [mapPicking, setMapPicking] = useState(false);
   const [selected, setSelected] = useState<Point | null>(null); const [focus, setFocus] = useState<Point | null>(null);
   const [location, setLocation] = useState<(Point & { accuracy: number; at: number }) | null>(null);
   const [locating, setLocating] = useState(false); const geoGeneration = useRef(0);
@@ -112,7 +110,7 @@ export function WalkingNotebook({ owner, onUnsavedChange, onSavingChange, reques
   }
   function patch(fields: Partial<WalkingDraft>) { changeDraft({ ...latestDraft.current, ...fields, updatedAt: Date.now() }); }
   function select(point: Point) {
-    geoGeneration.current++; setLocating(false); setSelected(point);
+    geoGeneration.current++; setLocating(false); setSelected(point); setMapPicking(false);
     if (choosing) { patch({ point }); setChoosing(false); setWriting(true); }
   }
   function locate(forDraft = false) {
@@ -159,9 +157,16 @@ export function WalkingNotebook({ owner, onUnsavedChange, onSavingChange, reques
       setError(err instanceof Error ? err.message : "保存できませんでした。下書きは残っています。");
     } finally { busyRef.current = false; setBusy(false); }
   }
-  async function remove(memo: Memo) {
+  function askRemove(memo: Memo, trigger: HTMLElement) {
+    setError(""); setSwipe(null);
+    if (!loaded || !editorAllowed || busyRef.current || transferring) return;
     if (hasDraft(latestDraft.current)) { setError("先に下書きを保存するか破棄してください。"); return; }
-    if (!window.confirm("このメモを削除しますか？ 元に戻せません。")) return;
+    setDeleteFocus(trigger); setDeleteTarget(memo);
+  }
+  async function remove(memo: Memo) {
+    if (!loaded || !editorAllowed || busyRef.current || transferring) return;
+    if (hasDraft(latestDraft.current)) { setError("先に下書きを保存するか破棄してください。"); return; }
+    setDeleteTarget(null);
     const operation: PendingWrite = { method: "DELETE", id: memo.id, version: memo.version ?? 1 };
     changeDraft({ ...editDraft(owner, memo), pending: operation }); setDetail(null); setWriting(true);
     await submit();
@@ -198,42 +203,56 @@ export function WalkingNotebook({ owner, onUnsavedChange, onSavingChange, reques
     finally { busyRef.current = false; setBusy(false); }
   }
   const groups = useMemo(() => dayGroups(notes), [notes]);
-  const editable = loaded && editorAllowed && !busy;
+  const editable = loaded && editorAllowed && !busy && !transferring;
+  const swipeScope = `${tab}:${query}:${refresh}:${revision}:${!!menu}:${!!detail}:${writing}:${!!deleteTarget}`;
+  const showMenu = (panel: MenuPanel | null) => { setSwipe(null); setMenu(panel); setError(""); setMessage(""); };
   const openMemo = (memos: Memo[]) => { setDetail(memos); setError(""); };
   return <div className="walkingNotebook">
-    <div className="walkingSearch"><label>言葉を探す<input type="search" placeholder="言葉・タイトル・タグ" value={query} maxLength={200} onChange={event => setQuery(event.target.value)} /></label><button onClick={() => setRefresh(n => n + 1)} aria-label="記録を再読み込み">再読込</button></div>
+    <header className="notebookHeader"><div><p className="eyebrow">いつもの道に、小さな発見を。</p><h1>地図の余白</h1></div><button type="button" className="notebookMenuButton" onClick={() => showMenu("menu")}>メニュー</button></header>
+    <button type="button" className="storageShortcut" onClick={() => showMenu("account")}><span aria-hidden="true">●</span><span>{local ? "保存先：このブラウザー" : "保存先：アカウント"}</span><span aria-hidden="true">›</span></button>
+    {storageIntro && <aside className="storageIntro"><p>この端末のブラウザーに保存します。閲覧データを削除すると記録も失われます。ほかの端末でも使いたいときは、Googleで引き継げます。</p><button type="button" onClick={dismissIntro}>説明を閉じる</button></aside>}
+    {transferCount > 0 && <button type="button" className="transferNotice" onClick={() => showMenu("account")}>このブラウザーの{transferCount}件を引き継げます <span aria-hidden="true">›</span></button>}
+    <div className="walkingSearch"><label><span className="visuallyHidden">言葉を探す</span><input type="search" placeholder="言葉・タイトル・タグ" value={query} maxLength={200} onChange={event => setQuery(event.target.value)} /></label>{query && <button type="button" onClick={() => setQuery("")}>検索を解除</button>}</div>
     {hasDraft(draft) && <div className="draftBanner"><span>{draft.pending ? "結果を確認したい保存操作があります。" : "書きかけの言葉があります。"}</span><button disabled={!editable} onClick={() => setWriting(true)}>続きを書く</button></div>}
-    {message && <p className="success" role="status">{message}</p>}
-    {error && !writing && !detail && <p className="error" role="alert">{error}</p>}
+    {message && !menu && <p className="success" role="status">{message}</p>}
+    {error && !menu && !writing && !detail && !deleteTarget && <p className="error" role="alert">{error}</p>}
     {localProblem && hasDraft(draft) && !writing && <p className="error" role="alert">{localStatus}</p>}
     <section hidden={tab !== "map"} aria-label="地図で記録を探す">
-      <div className="mapActionsRow"><button disabled={locating} onClick={() => locate(false)}>{locating ? "現在地を取得中…" : "現在地を表示"}</button></div>
-      <WalkingMap owner={owner} selected={choosing ? draft.point : selected} focus={focus} location={location} memos={pins} onSelect={select} onBounds={setBounds} onOpen={openMemo} />
+      <div className="walkingMapArea"><div className="mapActionsRow"><button disabled={locating} onClick={() => locate(false)}>{locating ? "現在地を取得中…" : "現在地を表示"}</button></div>
+      <WalkingMap showCenterSelect={choosing || mapPicking} owner={owner} selected={choosing ? draft.point : selected} focus={focus} location={location} memos={pins} onSelect={select} onBounds={setBounds} onOpen={openMemo} /></div>
+      {!choosing && !mapPicking && <button type="button" className="mapPickEntry" onClick={() => setMapPicking(true)}>場所を選ぶ</button>}
       <div className="mapSummary"><span>{mapLoading ? "この範囲の記録を確認中…" : `この範囲に表示中 ${pins.length} 件`}</span><span>緑：記録 · 茶：選択 · 青：取得時の現在地</span></div>
       {truncated && <p role="status">この範囲には200件を超える記録があります。地図を拡大して絞り込んでください。</p>}
-      {mapError && <p role="alert" className="error">{mapError} 表示中の記録は最新でない可能性があります。</p>}
+      {mapError && <p role="alert" className="error">{mapError} 表示中の記録は最新でない可能性があります。<button onClick={() => setRefresh(n => n + 1)}>記録を再読み込み</button></p>}
       {choosing && <p className="selectionHint" role="status">この言葉を残す場所を地図で選んでください。<button onClick={() => { setChoosing(false); setWriting(true); }}>入力に戻る</button></p>}
       {!selected && !choosing && <p className="hint">現在地を表示するか、地図をタップ。場所を決める前に書き始めても大丈夫です。</p>}
       {location && <small>取得時刻 {new Date(location.at).toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" })} · 精度 約{Math.round(location.accuracy)}m。ずれる場合は地図で修正できます。</small>}
     </section>
     <section hidden={tab !== "notes"} className="walkingNotes" aria-label="日付別の散歩ノート">
-      <h2>{query ? "言葉の検索結果" : "散歩ノート"}</h2><p>場所と一緒に、あの日の言葉を読み返す。</p>
-      {notesError && <p className="error" role="alert">{notesError}</p>}
-      {notesLoading ? <p role="status">記録を読み込み中…</p> : groups.length === 0 ? <p>{query ? "一致する言葉はありません。" : "まだ記録がありません。短い一言から残してみましょう。"}</p> : groups.map(([day, items]) => <section key={day} className="dayGroup"><h3>{day === new Date().toLocaleDateString("ja-JP") ? "今日の散歩" : day} <small>表示中 {items.length}件</small></h3>{items.map(memo => <button className="memoryCard" key={memo.id} onClick={() => openMemo([memo])}><time>{new Date(memo.created_at).toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" })}</time><strong>{memoLabel(memo)}</strong>{memo.title && <span>{memo.body}</span>}{memo.tags.length > 0 && <small>{memo.tags.join(" · ")}</small>}</button>)}</section>)}
+      <h2>{query ? "言葉の検索結果" : "散歩ノート"}</h2><p className="notebookLead">歩いた日の、小さな記憶。</p>
+      {swipeHint && notes.length > 0 && <p className="swipeHint">左にスライドすると削除できます</p>}
+      <span className="visuallyHidden" role="status">{swipe?.scope === swipeScope ? "削除ボタンを表示しました。押すと対象の確認へ進みます。" : ""}</span>
+      {notesError && <p className="error" role="alert">{notesError}<button onClick={() => setRefresh(n => n + 1)}>記録を再読み込み</button></p>}
+      {notesLoading ? <p role="status">記録を読み込み中…</p> : groups.length === 0 ? <p>{query ? "一致する言葉はありません。" : "まだ記録がありません。短い一言から残してみましょう。"}</p> : groups.map(([day, items]) => <section key={day} className="dayGroup"><h3>{day === new Date().toLocaleDateString("ja-JP") ? "今日の散歩" : day} <small>表示中 {items.length}件</small></h3>{items.map(memo => <SwipeMemo key={`${memo.id}:${memo.version}`} memo={memo} disabled={!editable || hasDraft(draft)} open={swipe?.id === memo.id && swipe.scope === swipeScope} onToggle={open => { setSwipe(open ? { id: memo.id, scope: swipeScope } : null); if (open) { setSwipeHint(false); try { localStorage.setItem("machinote-swipe-hint-v1", "seen"); } catch {} } }} onRead={() => openMemo([memo])} onDelete={trigger => askRemove(memo, trigger)} />)}</section>)}
       {cursor && <button disabled={notesLoading || moreBusy} onClick={() => void more()}>{moreBusy ? "読み込み中…" : "さらに前の記録を読む"}</button>}
-      <button disabled={exporting} onClick={() => void exportAll()}>{exporting ? "書き出し中…" : "すべての記録を書き出す（JSON）"}</button><small>{local ? "このブラウザーの全記録をファイルに保存します。" : "読み込み済みの件数にかかわらず、本人の全記録を書き出します。"}</small>
-      {local && <details className="localStorageHelp"><summary>このブラウザーの保存について</summary><p>この端末の、このブラウザーだけに保存します。別の端末や別のブラウザーとは共有されません。閲覧データの削除や端末の故障で失うことがあります。</p><p>共用端末では、使い終わったら記録と下書きを削除してください。必要な記録は先に書き出すか、Googleで引き継げます。</p><button type="button" disabled={!editable || hasDraft(draft)} onClick={() => void copyOldDemo()}>以前のデモで書いた記録をコピー</button><p>架空のサンプルは除き、元のデモはそのまま残します。</p><button type="button" disabled={!editable} onClick={() => void clearLocalRecords()}>このブラウザーの記録をすべて削除</button></details>}
     </section>
     <nav className="walkingNav" aria-label="ノートの表示"><button aria-pressed={tab === "map"} onClick={() => setTab("map")}>地図</button><button className="primaryBtn" disabled={!editable} onClick={begin}>書く</button><button aria-pressed={tab === "notes"} onClick={() => setTab("notes")}>ノート</button></nav>
+    <NotebookMenu panel={menu} setPanel={showMenu} local={local} editable={editable} hasDraft={hasDraft(draft)} busy={busy || transferring} exporting={exporting} error={error} message={message} accountContent={accountContent} onExport={() => void exportAll()} onClear={() => void clearLocalRecords()} onCopy={() => void copyOldDemo()} onReload={() => { setRefresh(n => n + 1); showMenu(null); }} />
+    {deleteTarget && <Sheet title="この記録を削除しますか？" returnFocus={deleteFocus} close={() => setDeleteTarget(null)}>
+      <div className="settingsInset deletePreview"><time>{new Date(deleteTarget.created_at).toLocaleString("ja-JP")}</time>{deleteTarget.title && <h3>{deleteTarget.title}</h3>}<p>{deleteTarget.body.length > 300 ? `${deleteTarget.body.slice(0, 300)}…（本文の一部）` : deleteTarget.body}</p></div>
+      <p className="menuIntro">{local ? "この端末のブラウザーの記録" : "現在のアカウントの記録"}</p><p>この1件だけを削除します。削除すると元に戻せません。</p><p>引き継ぎで作った別のコピーや、以前のデモの記録は残ります。</p>
+      {error && <p role="alert" className="error">{error}</p>}<button type="button" onClick={() => setDeleteTarget(null)}>キャンセル</button><button type="button" className="dangerBtn" disabled={!editable || hasDraft(draft)} onClick={() => void remove(deleteTarget)}>この1件を削除</button>
+    </Sheet>}
     {writing && <Sheet title={draft.pending?.method === "DELETE" ? "削除結果を確認" : draft.memoId ? "言葉を編集" : "ここで見つけたこと"} close={() => { if (!busy) { geoGeneration.current++; setLocating(false); setWriting(false); } }}>
       <form onSubmit={event => void submit(event)}><fieldset disabled={busy || !!draft.pending}>
         <label>この場所で何を見つけましたか？<textarea autoFocus value={draft.body} maxLength={2000} required rows={5} placeholder="パン屋の前、甘い匂い。" onChange={event => patch({ body: event.target.value })} /></label>
         <details><summary>タイトル・タグを添える（任意）</summary><label>タイトル<input maxLength={120} value={draft.title} onChange={event => patch({ title: event.target.value })} /></label><label>タグ（カンマ区切り）<input value={draft.tags} onChange={event => patch({ tags: event.target.value })} /></label></details>
-        <div className="placeConfirm"><strong>{draft.point ? "地図で選んだ場所に残します" : "場所はあとで選べます"}</strong>{draft.point && <small>{draft.point.lat.toFixed(5)}, {draft.point.lng.toFixed(5)}</small>}<div className="memoTools"><button type="button" onClick={() => { geoGeneration.current++; setLocating(false); setWriting(false); setChoosing(true); setTab("map"); }}>地図で場所を選ぶ</button><button type="button" disabled={locating} onClick={() => locate(true)}>{locating ? "現在地を取得中…" : "現在地を使う"}</button></div></div>
+        <div className="placeConfirm"><strong>{draft.point ? "地図で選んだ場所に残します" : "場所はあとで選べます"}</strong>{draft.point && <details><summary>場所の詳細</summary><small>{draft.point.lat.toFixed(5)}, {draft.point.lng.toFixed(5)}</small></details>}<div className="memoTools"><button type="button" onClick={() => { geoGeneration.current++; setLocating(false); setWriting(false); setChoosing(true); setTab("map"); }}>地図で場所を選ぶ</button><button type="button" disabled={locating} onClick={() => locate(true)}>{locating ? "現在地を取得中…" : "現在地を使う"}</button></div></div>
       </fieldset>
       {draft.pending && <p>送信した内容を保全しています。結果を確認してから続きを編集できます。</p>}
       <p className="draftStatus" role="status">{busy ? "通信しています。結果を確認中…" : localStatus || "入力した言葉はこの端末に下書き保存されます。"}</p>
       {error && <p className="error" role="alert">{error}</p>}
+      {!draft.point && !draft.pending && <small>保存するには、言葉を残す場所を選んでください。</small>}
       <div className="sheetSave"><button className="primaryBtn" disabled={!editable || (!draft.pending && (!draft.body.trim() || !draft.point))}>{busy ? "確認中…" : draft.pending ? "結果を確認して再試行" : "この場所に保存"}</button><button type="button" disabled={busy} onClick={() => { geoGeneration.current++; setLocating(false); setWriting(false); }}>下書きのまま閉じる</button></div>
       {draft.pending && <button type="button" disabled={busy} onClick={() => void checkRemote()}>保存済みの記録を確認</button>}
       <button type="button" disabled={busy} onClick={() => void discard()}>端末の下書きを破棄</button>
@@ -241,7 +260,7 @@ export function WalkingNotebook({ owner, onUnsavedChange, onSavingChange, reques
       </form>
     </Sheet>}
     {detail && <Sheet title={detail.length > 1 ? `この場所の${detail.length}つの記録` : "場所に残した言葉"} close={() => setDetail(null)}>
-      {detail.length > 1 ? [...detail].sort((a, b) => a.created_at.localeCompare(b.created_at)).map(memo => <button key={memo.id} className="memoryCard" onClick={() => setDetail([memo])}><time>{new Date(memo.created_at).toLocaleString("ja-JP")}</time><strong>{memoLabel(memo)}</strong></button>) : detail.map(memo => <article key={memo.id} className="memoryDetail"><time>{new Date(memo.created_at).toLocaleString("ja-JP")}</time>{memo.title && <h3>{memo.title}</h3>}<p className="memoBody">{memo.body}</p><div className="tagGroup">{memo.tags.map(tag => <button key={tag} onClick={() => { setQuery(tag); setDetail(null); setTab("notes"); }}>{tag}</button>)}</div><button onClick={() => { setFocus({ lat: memo.lat, lng: memo.lng }); setDetail(null); setTab("map"); }}>この場所を地図で見る</button><div className="memoTools"><button disabled={!editable} onClick={() => { if (hasDraft(latestDraft.current)) { setError("書きかけの下書きがあります。先に保存するか破棄してください。"); return; } changeDraft(editDraft(owner, memo)); setDetail(null); setWriting(true); }}>編集する</button><button disabled={!editable} onClick={() => void remove(memo)}>削除する</button></div></article>)}
+      {detail.length > 1 ? [...detail].sort((a, b) => a.created_at.localeCompare(b.created_at)).map(memo => <button key={memo.id} className="memoryCard" onClick={() => setDetail([memo])}><time>{new Date(memo.created_at).toLocaleString("ja-JP")}</time><strong>{memoLabel(memo)}</strong></button>) : detail.map(memo => <article key={memo.id} className="memoryDetail"><time>{new Date(memo.created_at).toLocaleString("ja-JP")}</time>{memo.title && <h3>{memo.title}</h3>}<p className="memoBody">{memo.body}</p><div className="tagGroup">{memo.tags.map(tag => <button key={tag} onClick={() => { setQuery(tag); setDetail(null); setTab("notes"); }}>{tag}</button>)}</div><button onClick={() => { setFocus({ lat: memo.lat, lng: memo.lng }); setDetail(null); setTab("map"); }}>この場所を地図で見る</button><div className="memoTools"><button disabled={!editable} onClick={() => { if (hasDraft(latestDraft.current)) { setError("書きかけの下書きがあります。先に保存するか破棄してください。"); return; } changeDraft(editDraft(owner, memo)); setDetail(null); setWriting(true); }}>編集する</button></div><div className="detailDanger"><button disabled={!editable} onClick={event => askRemove(memo, event.currentTarget)}>この記録を削除</button></div></article>)}
       {error && <p className="error" role="alert">{error}</p>}
     </Sheet>}
   </div>;

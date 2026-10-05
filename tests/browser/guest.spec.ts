@@ -4,7 +4,7 @@ import type { Page } from "@playwright/test";
 async function writeGuest(page: Page, body = "夕方の路地にパンの香り") {
   await page.goto("/guest");
   await expect(page.getByRole("button", { name: "書く", exact: true })).toBeEnabled();
-  await page.getByRole("button", { name: "地図の中央を選ぶ" }).click();
+  await page.getByRole("button", { name: "場所を選ぶ", exact: true }).click(); await page.getByRole("button", { name: "地図の中央を選ぶ" }).click();
   await page.getByRole("button", { name: "書く", exact: true }).click();
   await page.getByLabel("この場所で何を見つけましたか？").fill(body);
   await page.getByRole("button", { name: "この場所に保存", exact: true }).click();
@@ -37,7 +37,8 @@ test("guest writes, reloads, edits and deletes locally without auth, sample data
   await expect(page.locator(".memoryCard")).toContainText("また歩きたい");
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.screenshot({ path: "/tmp/machiaruki-guest-notes.png", fullPage: true });
-  await page.getByText("このブラウザーの保存について", { exact: true }).click();
+  await page.getByRole("button", { name: "メニュー", exact: true }).click(); await page.getByRole("button", { name: /記録の管理/ }).click();
+  await page.getByRole("button", { name: "このブラウザーの記録を削除", exact: true }).click();
   page.once("dialog", d => d.dismiss());
   await page.getByRole("button", { name: "このブラウザーの記録をすべて削除" }).click();
   await expect(page.locator(".memoryCard")).toHaveCount(1);
@@ -55,7 +56,8 @@ test("legacy demo copies only personal records and preserves the original and it
   const source = JSON.stringify([{ ...record, id: "sample-0", body: "架空のサンプル" }, record]);
   await page.evaluate(value => localStorage.setItem("machinote-demo-v1", value), source);
   await page.getByRole("button", { name: "ノート", exact: true }).click();
-  await page.getByText("このブラウザーの保存について", { exact: true }).click();
+  await page.getByRole("button", { name: "メニュー", exact: true }).click(); await page.getByRole("button", { name: /記録の管理/ }).click();
+  await page.getByRole("button", { name: /以前のデモから取り込む/ }).click();
   await page.getByRole("button", { name: "以前のデモで書いた記録をコピー" }).click();
   await expect(page.locator(".memoryCard")).toHaveCount(1);
   await expect(page.getByRole("heading", { name: /2026\/1\/2/ })).toBeVisible();
@@ -79,9 +81,11 @@ test("handoff requires account confirmation, retains originals and retries a los
     if (posts === 1) return route.abort();
     return route.fulfill({ json: memo });
   });
+  await page.getByRole("button", { name: "保存先：このブラウザー", exact: false }).click();
   await page.getByRole("link", { name: "ほかの端末でも使う・ログイン →" }).click();
   await page.getByLabel("メールアドレス").fill(user.email); await page.getByLabel("パスワード", { exact: true }).fill("walking-password");
   await page.getByRole("button", { name: "ログインする", exact: true }).click();
+  await page.getByRole("button", { name: /保存先：アカウント/ }).click();
   const panel = page.getByRole("region", { name: "端末の記録を引き継ぐ" });
   await expect(panel).toContainText(user.email);
   expect(posts).toBe(0);
@@ -90,7 +94,7 @@ test("handoff requires account confirmation, retains originals and retries a los
   await panel.getByRole("checkbox").check();
   await panel.getByRole("button", { name: "1件をこのアカウントに引き継ぐ" }).click();
   await expect(panel.getByRole("alert")).toContainText("元の記録はこのブラウザーに残っています");
-  await page.reload(); await panel.getByRole("button", { name: "記録を確認する" }).click(); await panel.getByRole("checkbox").check();
+  await page.reload(); await page.getByRole("button", { name: /保存先：アカウント/ }).click(); await panel.getByRole("button", { name: "記録を確認する" }).click(); await panel.getByRole("checkbox").check();
   await panel.getByRole("button", { name: "1件をこのアカウントに引き継ぐ" }).click();
   await expect(panel.getByRole("status")).toContainText("1件を引き継ぎました");
   expect(saved.size).toBe(1); expect(ids[0]).toBe(ids[1]);
@@ -107,7 +111,7 @@ test("a guest storage write failure keeps the draft and does not claim success",
   await page.goto("/guest");
   await expect(page.getByRole("button", { name: "書く", exact: true })).toBeEnabled();
   await page.evaluate(() => { const put = IDBObjectStore.prototype.put; IDBObjectStore.prototype.put = function(...args) { if (this.name === "memos") throw new DOMException("quota", "QuotaExceededError"); return put.apply(this, args); }; });
-  await page.getByRole("button", { name: "地図の中央を選ぶ" }).click(); await page.getByRole("button", { name: "書く", exact: true }).click();
+  await page.getByRole("button", { name: "場所を選ぶ", exact: true }).click(); await page.getByRole("button", { name: "地図の中央を選ぶ" }).click(); await page.getByRole("button", { name: "書く", exact: true }).click();
   await page.getByLabel("この場所で何を見つけましたか？").fill("消えてほしくない下書き");
   await page.getByRole("button", { name: "この場所に保存", exact: true }).click();
   await expect(page.locator(".walkingSheet").getByRole("alert")).toBeVisible();

@@ -354,3 +354,77 @@ summary { cursor: pointer; padding: 8px 0; }
 .transferConsent { display: flex; gap: 10px; align-items: flex-start; margin: 15px 0; }
 .transferConsent input { width: 20px; min-width: 20px; margin-top: 3px; }
 .localStorageHelp { margin-top: 18px; font-size: 14px; line-height: 1.7; }
+
+/* Everyday notebook: quiet reading surface, secondary operations in the menu. */
+.walkingRoot { max-width: 960px; padding: 24px 22px calc(100px + env(safe-area-inset-bottom)); font-family: -apple-system, BlinkMacSystemFont, "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif; line-height: 1.7; }
+.notebookHeader { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 2px; }
+.notebookHeader h1 { font-family: "Hiragino Mincho ProN", "Yu Mincho", serif; font-size: 28px; margin: 2px 0; }
+.notebookHeader .eyebrow { color: #617066; font-size: 12px; }
+.walkingRoot .notebookMenuButton { width: auto; padding: 8px 14px; background: var(--paper); font-size: 13px; }
+.walkingRoot .storageShortcut { display: flex; align-items: center; gap: 8px; width: 100%; border: 0; border-radius: 0; background: transparent; text-align: left; padding: 6px 0; color: #52604e; font-size: 12px; margin: 0 0 10px; }
+.storageShortcut span:first-child { font-size: 8px; color: var(--green); }
+.storageShortcut span:last-child { margin-left: auto; }
+.storageIntro { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; background: #eaf0e5; padding: 12px 16px; border-radius: 12px; font-size: 13px; margin: 8px 0 18px; }
+.storageIntro p { flex: 1 1 230px; margin: 0; }
+.walkingRoot .storageIntro button { width: auto; font-size: 12px; background: transparent; }
+.walkingRoot .transferNotice { display: flex; justify-content: space-between; padding: 12px 14px; margin: 8px 0 18px; font-size: 13px; color: var(--green); border-color: #cbd6c5; background: #eaf0e5; text-align: left; }
+.walkingSearch { margin-bottom: 20px; }
+.walkingSearch input { margin: 0; border-radius: 12px; background: var(--paper); }
+.walkingSearch button { white-space: nowrap; font-size: 12px; }
+.visuallyHidden { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.walkingNotes h2 { margin: 24px 0 0; font-family: "Hiragino Mincho ProN", "Yu Mincho", serif; font-size: 23px; font-weight: 500; }
+.notebookLead { color: #617066; margin: 4px 0 24px; font-size: 13px; }
+.swipeHint { color: #617066; font-size: 12px; margin-bottom: 20px; }
+.dayGroup { margin-bottom: 28px; }
+.dayGroup h3 { font-size: 15px; font-weight: 500; margin: 24px 0 0; padding-bottom: 10px; }
+.walkingRoot .swipeMemo { position: relative; overflow: hidden; border-bottom: 1px solid var(--line); }
+.walkingRoot .swipeMemo:last-child { border-bottom: 0; }
+.walkingRoot .memoryCard { border: 0; border-radius: 0; box-shadow: none; background: var(--bg); margin: 0; padding: 24px 2px !important; }
+.walkingRoot .swipeMemo .memoryCard { position: relative; touch-action: pan-y pinch-zoom; user-select: none; transition: transform .16s ease-out; }
+.walkingRoot .swipeMemo.isDragging .memoryCard { transition: none; }
+.walkingRoot .memoryCard strong { font-family: "Hiragino Mincho ProN", "Yu Mincho", serif; font-size: 18px; line-height: 1.9; font-weight: 500; white-space: pre-wrap; }
+.walkingRoot .memoryCard span { font-size: 14px; line-height: 1.8; }
+.walkingRoot .memoryCard small { font-size: 12px; color: #617066; }
+.walkingRoot .swipeDelete { position: absolute; inset: 8px 0 8px auto; width: 80px; min-height: 44px; border: 0; padding: 10px; text-align: center; background: #914e40; color: #fffdf9; border-radius: 12px; }
+.walkingNav { max-width: 960px; background: var(--paper); box-shadow: none; grid-template-columns: 1fr 1.2fr 1fr; gap: 12px; }
+.walkingRoot .walkingNav button { border: 0; border-radius: 12px; background: transparent; font-size: 14px; }
+.walkingRoot .walkingNav .primaryBtn { background: var(--green); color: white; }
+.walkingRoot .walkingNav button[aria-pressed="true"] { color: var(--green); background: #eaf0e5; }
+.walkingRoot .walkingSheet { font-family: -apple-system, BlinkMacSystemFont, "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif; line-height: 1.7; }
+.walkingSheet .sheetHeader h2 { font-family: "Hiragino Mincho ProN", "Yu Mincho", serif; font-weight: 500; }
+.walkingSheet .memoryDetail .memoBody { font-family: "Hiragino Mincho ProN", "Yu Mincho", serif; }
+.settingsSheet { padding: 24px; }
+.settingsSheet .sheetHeader { margin-bottom: 4px; }
+.walkingRoot .settingsBack { width: auto; border: 0; background: transparent; padding-left: 0; font-size: 13px; color: #617066; }
+.settingsGroup { font-size: 12px; font-weight: 500; color: #617066; margin: 28px 0 0; }
+.walkingRoot .settingsRow { display: flex; align-items: center; justify-content: space-between; gap: 12px; text-align: left; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; background: transparent; padding: 18px 0; margin: 0; font-size: 15px; }
+.settingsRow small { font-size: 12px; margin-top: 4px; }
+.settingsInset { background: #eaf0e5; padding: 18px; border-radius: 12px; margin: 18px 0; overflow-wrap: anywhere; }
+.settingsInset p { margin: 8px 0; }
+.menuIntro { font-size: 13px; color: #617066; }
+.settingsDanger { border-top: 1px solid var(--line); margin-top: 32px; padding-top: 16px; }
+.walkingRoot .settingsDanger button { color: #914e40; border: 0; background: transparent; text-align: left; }
+.walkingRoot .dangerBtn { background: #914e40; border-color: #914e40; }
+.deletePreview p { white-space: pre-wrap; overflow-wrap: anywhere; }
+.deletePreview time { font-size: 13px; }
+.aboutWords { font-family: "Hiragino Mincho ProN", "Yu Mincho", serif; font-size: 22px; line-height: 2; margin: 28px 0; }
+.notebookHelp details { border-bottom: 1px solid var(--line); padding: 12px 0; }
+.notebookHelp summary { min-height: 44px; }
+.notebookHelp p { line-height: 1.8; }
+.walkingRoot a, .helpPage a { color: var(--green); text-underline-offset: 4px; }
+.walkingRoot a.entryButton { color: white; }
+.helpPage { max-width: 720px; font-family: system-ui, sans-serif; line-height: 1.8; }
+@media (max-width: 420px) {
+  .walkingRoot { padding: 20px 18px calc(96px + env(safe-area-inset-bottom)); }
+  .walkingRoot .walkingMap { height: 48dvh; min-height: 280px; }
+  .walkingRoot .walkingSheet { padding: 18px 16px calc(18px + env(safe-area-inset-bottom)); }
+  .notebookHeader h1 { font-size: 25px; }
+}
+@media (min-width: 800px) { .settingsSheet { top: 0; bottom: 0 !important; right: 0; left: auto; margin: 0; height: 100dvh; max-height: 100dvh !important; width: 440px; border-radius: 20px 0 0 20px; } }
+@media (prefers-reduced-motion: reduce) { .walkingRoot .swipeMemo .memoryCard { transition: none; } }
+.walkingMapArea { position: relative; }
+.walkingRoot .mapActionsRow { position: absolute; top: 12px; left: 12px; z-index: 450; margin: 0; }
+.walkingRoot .mapActionsRow button { width: auto; font-size: 13px; background: var(--paper); box-shadow: 0 2px 6px #0001; }
+.walkingRoot .mapPickEntry { width: auto; border: 0; background: transparent; padding-left: 0; color: var(--green); font-size: 13px; }
+.detailDanger { margin-top: 24px; border-top: 1px solid var(--line); padding-top: 12px; }
+.walkingRoot .detailDanger button { width: auto; color: #914e40; border: 0; background: transparent; text-align: left; }
