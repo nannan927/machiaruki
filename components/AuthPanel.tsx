@@ -51,7 +51,7 @@ export function AuthPanel() {
     {!client ? <p role="alert" className="error">保存先が未設定です。管理者が接続設定を行うと利用できます。</p> : <>
       {googleEnabled && <div className="googleEntry"><button type="button" className="primaryBtn" disabled={busy} onClick={() => void signInWithGoogle()}>Googleで始める・ログイン</button><p>別の会員登録は不要です。このブラウザーの記録は、ログイン後に確認して引き継げます。</p></div>}
       {googleEnabled && <p>メール・パスワードで登録済みの方はこちら</p>}
-      <div className="memoTools"><button type="button" disabled={busy} aria-pressed={mode === "login"} onClick={() => changeMode("login")}>ログイン</button>{signupEnabled && <button type="button" disabled={busy} aria-pressed={mode === "signup"} onClick={() => changeMode("signup")}>新規登録</button>}</div>
+      {signupEnabled && <div className="memoTools"><button type="button" disabled={busy} aria-pressed={mode === "login"} onClick={() => changeMode("login")}>ログイン</button><button type="button" disabled={busy} aria-pressed={mode === "signup"} onClick={() => changeMode("signup")}>新規登録</button></div>}
       {!signupEnabled && !googleEnabled && <p>登録済みのアカウントでログインしてください。新規登録は受け付けていません。</p>}
       <form className="form" onSubmit={submit}><fieldset disabled={busy}>
         <label>メールアドレス<input type="email" autoComplete="email" maxLength={254} required value={email} onChange={e => setEmail(e.target.value)} /></label>
@@ -61,6 +61,7 @@ export function AuthPanel() {
         <p role="status">{message}</p>
       </fieldset></form>
       {mode !== "reset" && <button type="button" disabled={busy} onClick={() => changeMode("reset")}>パスワードを忘れた方</button>}
+      {mode === "reset" && !signupEnabled && <button type="button" disabled={busy} onClick={() => changeMode("login")}>ログイン画面に戻る</button>}
       <p><Link href="/privacy">プライバシーポリシー</Link></p>
     </>}
   </section>;
