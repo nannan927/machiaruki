@@ -55,7 +55,7 @@ test("pagination appends and search queries the full dataset", async ({ page }) 
 });
 test("password recovery request and invalid recovery page", async ({ page }) => {
   await page.route("https://test-project.supabase.co/auth/v1/recover**", route => route.fulfill({ json: {} }));
-  await page.goto("/");
+  await page.goto("/classic");
   await page.getByRole("button", { name: "パスワードを忘れた方" }).click();
   await page.getByLabel("メールアドレス").fill(user.email);
   await page.getByRole("button", { name: "再設定メールを送る" }).click();
@@ -75,7 +75,7 @@ test("registration validates password confirmation before sending", async ({ pag
   test.skip(process.env.NEXT_PUBLIC_ALLOW_SIGNUP === "false", "Personal deployment disables signups");
   let signups = 0;
   await page.route("https://test-project.supabase.co/auth/v1/signup**", route => { signups++; return route.fulfill({ json: { user, session: null } }); });
-  await page.goto("/");
+  await page.goto("/classic");
   await page.getByRole("button", { name: "新規登録", exact: true }).click();
   await page.getByLabel("メールアドレス").fill(user.email);
   await page.getByLabel("パスワード", { exact: true }).fill("test-password-one");
@@ -90,7 +90,7 @@ test("registration validates password confirmation before sending", async ({ pag
 });
 test("personal deployment offers login without registration", async ({ page }) => {
   test.skip(process.env.NEXT_PUBLIC_ALLOW_SIGNUP !== "false" || process.env.NEXT_PUBLIC_GOOGLE_AUTH_ENABLED !== "false", "Run with both registration flags disabled");
-  await page.goto("/");
+  await page.goto("/classic");
   await expect(page.getByRole("button", { name: "新規登録", exact: true })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "ログインする", exact: true })).toBeVisible();
   await expect(page.getByText(/新規登録は受け付けていません/)).toBeVisible();

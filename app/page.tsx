@@ -44,7 +44,7 @@ export default function Home() {
       <div className="settingsInset"><strong>アカウントに保存</strong><p>{session.user.email}</p><p>同じアカウントでログインすると、スマホでもパソコンでも読み返せます。</p></div>
       <GuestTransfer key={`transfer:${session.user.id}`} disabled={saving || hasDraft} onBusy={setTransferring} onAvailable={setTransferCount} owner={session.user.id} email={session.user.email ?? ""} onComplete={() => { setImportVersion(n => n + 1); setTransferCount(0); }} />
       <button type="button" disabled={signingOut || saving || transferring} onClick={() => void signOut()}>{signingOut ? "ログアウト中…" : "ログアウト"}</button>
-    </>} /> : <AuthPanel />}
+    </>} /> : <AuthPanel emailLogin={false} />}
     {!session && <p className="guestFooter"><Link href="/help">使い方・よくある質問</Link> · <Link href="/demo">以前のデモと記録を開く</Link></p>}
   </main>;
 }

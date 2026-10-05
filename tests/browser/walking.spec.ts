@@ -1,4 +1,4 @@
-import { test, expect } from "./fixtures";
+import { test, expect, mockGoogleSignIn } from "./fixtures";
 import type { Page } from "@playwright/test";
 import type { Memo } from "../../types/memo";
 const user = { id: "11111111-1111-4111-8111-111111111111", aud: "authenticated", role: "authenticated", email: "walker@example.com", app_metadata: {}, user_metadata: {}, created_at: "2026-01-01T00:00:00Z" };
@@ -22,7 +22,8 @@ async function setup(page: Page, initial: Memo[] = []) {
     if (state.lost) { state.lost = false; return route.abort(); }
     return route.fulfill({ json: memo });
   });
-  await page.goto("/"); await page.getByLabel("メールアドレス").fill(user.email); await page.getByLabel("パスワード", { exact: true }).fill("walking-password"); await page.getByRole("button", { name: "ログインする", exact: true }).click();
+  await mockGoogleSignIn(page, user);
+  await page.goto("/"); await page.getByRole("button", { name: "Googleで始める・ログイン", exact: true }).click();
   await expect(page.getByRole("button", { name: "書く", exact: true })).toBeEnabled();
   await expect(page.getByRole("region", { name: "思い出の地図" })).toBeVisible();
   return state;
@@ -83,7 +84,7 @@ test("location rejection preserves words; manual selection and logout clear priv
   await page.getByRole("button", { name: "現在地を使う", exact: true }).click(); await expect(page.locator(".walkingNotebook").getByRole("alert")).toContainText("位置情報が許可されていません");
   await expect(page.getByLabel("この場所で何を見つけましたか？")).toHaveValue("位置情報がなくても書ける");
   await page.getByRole("button", { name: "下書きのまま閉じる", exact: true }).click(); await page.getByRole("button", { name: "メニュー", exact: true }).click(); await page.getByRole("button", { name: /保存先・アカウント/ }).click(); page.once("dialog", d => d.accept()); await page.getByRole("button", { name: "ログアウト", exact: true }).click();
-  await expect(page.getByRole("button", { name: "ログインする", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Googleで始める・ログイン", exact: true })).toBeVisible();
   const saved = await page.evaluate(() => new Promise(resolve => { const db = indexedDB.open("machinote-private-drafts", 1); db.onsuccess = () => { const req = db.result.transaction("drafts").objectStore("drafts").getAll(); req.onsuccess = () => { resolve(req.result); db.result.close(); }; }; }));
   expect(saved).toEqual([]);
 });

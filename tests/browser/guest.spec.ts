@@ -1,4 +1,4 @@
-import { test, expect } from "./fixtures";
+import { test, expect, mockGoogleSignIn } from "./fixtures";
 import type { Page } from "@playwright/test";
 
 async function writeGuest(page: Page, body = "夕方の路地にパンの香り") {
@@ -83,8 +83,8 @@ test("handoff requires account confirmation, retains originals and retries a los
   });
   await page.getByRole("button", { name: "保存先：このブラウザー", exact: false }).click();
   await page.getByRole("link", { name: "ほかの端末でも使う・ログイン →" }).click();
-  await page.getByLabel("メールアドレス").fill(user.email); await page.getByLabel("パスワード", { exact: true }).fill("walking-password");
-  await page.getByRole("button", { name: "ログインする", exact: true }).click();
+  await mockGoogleSignIn(page, user);
+  await page.getByRole("button", { name: "Googleで始める・ログイン", exact: true }).click();
   await page.getByRole("button", { name: /保存先：アカウント/ }).click();
   const panel = page.getByRole("region", { name: "端末の記録を引き継ぐ" });
   await expect(panel).toContainText(user.email);

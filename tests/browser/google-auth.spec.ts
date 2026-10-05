@@ -24,7 +24,7 @@ test("cancelled Google authorization offers a way back without showing provider 
   await expect(page.locator("main").getByRole("alert")).toContainText("ログインを完了できませんでした");
   await expect(page.getByText("private-provider-detail")).toHaveCount(0);
   await page.getByRole("link", { name: "ログイン画面へ戻る" }).click();
-  await expect(page.getByRole("button", { name: "ログインする", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Googleで始める・ログイン", exact: true })).toBeVisible();
 });
 
 test("Google callback establishes a private notebook session and removes URL tokens", async ({ page }) => {
